@@ -1,9 +1,14 @@
 import java.awt.Color;
 import java.awt.Font;
 import java.awt.Graphics2D;
+import java.awt.Image;
+import java.io.File;
+import java.io.IOException;
+import javax.imageio.ImageIO;
 
 public class Courier {
     private static final int MAX_STAT_LEVEL = 5;
+    private static final Image LIFT_BIRD_SPRITE = loadSprite("assets/lift_bird_reference.png");
 
     private final String name;
     private final Color color;
@@ -171,59 +176,105 @@ public class Courier {
     }
 
     private void drawStrongLiftBird(Graphics2D g, int x, int y) {
+        if (LIFT_BIRD_SPRITE != null) {
+            g.drawImage(LIFT_BIRD_SPRITE, x - 24, y - 24, 92, 79, null);
+            return;
+        }
+
         g.setColor(color.darker());
-        g.fillOval(x + 4, y + 8, 34, 28);
+        g.fillPolygon(new int[]{x - 10, x + 7, x + 5}, new int[]{y + 25, y + 14, y + 37}, 3);
+        g.fillOval(x + 8, y + 24, 34, 18);
 
         g.setColor(color);
-        g.fillOval(x, y, 42, 31);
-
-        g.setColor(new Color(75, 120, 58));
-        g.fillArc(x - 6, y - 10, 50, 25, 0, 180);
-
+        g.fillOval(x, y + 6, 48, 40);
+        g.setColor(color.brighter());
+        g.fillOval(x + 12, y + 12, 23, 14);
         g.setColor(new Color(250, 210, 92));
-        g.fillPolygon(new int[]{x + 39, x + 55, x + 39}, new int[]{y + 12, y + 18, y + 24}, 3);
+        g.fillPolygon(new int[]{x + 40, x + 59, x + 40}, new int[]{y + 23, y + 29, y + 35}, 3);
 
         g.setColor(Color.WHITE);
-        g.fillOval(x + 27, y + 8, 8, 8);
+        g.fillOval(x + 30, y + 16, 14, 14);
         g.setColor(Color.BLACK);
-        g.fillOval(x + 30, y + 10, 4, 4);
+        g.fillOval(x + 36, y + 20, 5, 5);
+
+        g.setColor(new Color(220, 151, 45));
+        g.fillArc(x + 4, y - 2, 40, 26, 0, 180);
+        g.setColor(new Color(115, 72, 32));
+        g.fillRoundRect(x + 6, y + 12, 36, 7, 5, 5);
+        g.setColor(new Color(126, 225, 255));
+        g.fillOval(x + 30, y + 4, 13, 13);
+        g.setColor(Color.WHITE);
+        g.drawOval(x + 30, y + 4, 13, 13);
+
+        g.setColor(new Color(86, 55, 37));
+        g.fillRoundRect(x - 12, y + 34, 70, 27, 7, 7);
+        g.setColor(new Color(141, 88, 50));
+        g.fillRoundRect(x - 6, y + 29, 58, 25, 7, 7);
+        g.setColor(new Color(55, 35, 28));
+        g.drawLine(x - 4, y + 41, x + 50, y + 41);
+        g.setColor(new Color(190, 129, 70));
+        for (int i = 0; i < 4; i++) {
+            g.fillOval(x + 1 + i * 12, y + 45, 4, 4);
+        }
+    }
+
+    private static Image loadSprite(String path) {
+        try {
+            return ImageIO.read(new File(path));
+        } catch (IOException exception) {
+            return null;
+        }
     }
 
     private void drawRunnerBird(Graphics2D g, int x, int y) {
         g.setColor(color.darker());
-        g.fillOval(x + 3, y + 13, 25, 18);
+        g.fillPolygon(new int[]{x - 8, x + 6, x + 5}, new int[]{y + 23, y + 13, y + 33}, 3);
+        g.fillOval(x + 5, y + 20, 27, 17);
 
         g.setColor(color);
-        g.fillOval(x, y, 31, 25);
+        g.fillOval(x, y + 4, 39, 32);
+        g.setColor(color.brighter());
+        g.fillOval(x + 9, y + 10, 18, 11);
 
         g.setColor(new Color(250, 210, 92));
-        g.fillPolygon(new int[]{x + 29, x + 43, x + 29}, new int[]{y + 10, y + 16, y + 21}, 3);
+        g.fillPolygon(new int[]{x + 34, x + 49, x + 34}, new int[]{y + 17, y + 23, y + 29}, 3);
 
         g.setColor(Color.WHITE);
-        g.fillOval(x + 20, y + 7, 7, 7);
+        g.fillOval(x + 24, y + 11, 12, 12);
         g.setColor(Color.BLACK);
-        g.fillOval(x + 23, y + 9, 3, 3);
+        g.fillOval(x + 29, y + 15, 5, 5);
+
+        g.setColor(new Color(220, 151, 45));
+        g.fillArc(x + 1, y - 3, 34, 23, 0, 180);
+        g.setColor(new Color(115, 72, 32));
+        g.fillRoundRect(x + 3, y + 9, 31, 7, 5, 5);
+        g.setColor(new Color(126, 225, 255));
+        g.fillOval(x + 23, y + 1, 11, 11);
+        g.setColor(Color.WHITE);
+        g.drawOval(x + 23, y + 1, 11, 11);
 
         g.setColor(new Color(255, 176, 60));
-        g.drawLine(x + 10, y + 24, x + 6, y + 35);
-        g.drawLine(x + 20, y + 24, x + 25, y + 35);
+        g.drawLine(x + 13, y + 34, x + 8, y + 45);
+        g.drawLine(x + 25, y + 34, x + 30, y + 45);
     }
 
     private void drawGemLoad(Graphics2D g, int x, int y) {
         if (strongCarrier) {
-            g.setColor(new Color(92, 56, 35));
-            g.fillRoundRect(x - 11, y + 34, 31, 18, 5, 5);
+            g.setColor(new Color(95, 205, 255));
+            for (int i = 0; i < 4; i++) {
+                g.fillOval(x - 4 + i * 9, y + 29 + (i % 2) * 4, 8, 8);
+            }
         } else {
             g.setColor(new Color(96, 59, 37));
             g.fillRoundRect(x - 17, y + 30, 31, 16, 5, 5);
             g.setColor(new Color(60, 42, 32));
             g.fillOval(x - 13, y + 41, 8, 8);
             g.fillOval(x + 1, y + 41, 8, 8);
-        }
 
-        g.setColor(new Color(95, 205, 255));
-        g.fillOval(x - 5, y + 29, 7, 7);
-        g.fillOval(x + 4, y + 31, 6, 6);
+            g.setColor(new Color(95, 205, 255));
+            g.fillOval(x - 5, y + 29, 7, 7);
+            g.fillOval(x + 4, y + 31, 6, 6);
+        }
 
         g.setFont(new Font("Arial", Font.BOLD, 10));
         g.setColor(Color.WHITE);
@@ -232,9 +283,6 @@ public class Courier {
 
     private void drawStatusBubble(Graphics2D g, int x, int y) {
         if (!busy) {
-            g.setFont(new Font("Arial", Font.BOLD, 10));
-            g.setColor(new Color(235, 245, 230));
-            g.drawString(name, x - 16, y - 12);
             return;
         }
 

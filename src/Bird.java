@@ -2,10 +2,15 @@ import java.awt.Color;
 import java.awt.Font;
 import java.awt.FontMetrics;
 import java.awt.Graphics2D;
+import java.awt.Image;
+import java.io.File;
+import java.io.IOException;
+import javax.imageio.ImageIO;
 
 public class Bird {
-    private static final int SIZE = 42;
+    private static final int SIZE = 48;
     private static final int MAX_STAT_LEVEL = 5;
+    private static final Image BLUE_MINER_SPRITE = loadSprite("assets/blue_miner_reference.png");
 
     private final String name;
     private final Color color;
@@ -175,16 +180,52 @@ public class Bird {
         int birdX = (int) x;
         int bob = (int) (Math.sin(animationTime * 8) * 3);
         int birdY = floorY - SIZE - 14 + bob + laneOffset;
-        boolean facingRight = !movingToMine;
+        boolean facingRight = movingToMine;
+
+        if (drawBlueMinerSprite(g, birdX, floorY, laneOffset, facingRight, mineX)) {
+            return;
+        }
 
         drawShadow(g, birdX, floorY + laneOffset);
         drawLegs(g, birdX, birdY);
         drawTail(g, birdX, birdY, facingRight);
         drawWing(g, birdX, birdY);
         drawBody(g, birdX, birdY, facingRight);
-        drawGemPack(g, birdX, birdY);
+        drawGemCart(g, birdX, birdY, facingRight);
         drawHarvestEffect(g, birdX, birdY, mineX, facingRight);
         drawCarryBubble(g, birdX, birdY);
+    }
+
+    private static Image loadSprite(String path) {
+        try {
+            return ImageIO.read(new File(path));
+        } catch (IOException exception) {
+            return null;
+        }
+    }
+
+    private boolean drawBlueMinerSprite(Graphics2D g, int birdX, int floorY, int laneOffset, boolean facingRight, int mineX) {
+        if (!"Blue Bird".equals(name) || BLUE_MINER_SPRITE == null) {
+            return false;
+        }
+
+        int spriteWidth = 126;
+        int spriteHeight = 84;
+        int spriteX = birdX - 22;
+        int spriteY = floorY - spriteHeight - 8 + laneOffset;
+
+        drawShadow(g, birdX + 20, floorY + laneOffset);
+        if (facingRight) {
+            g.drawImage(BLUE_MINER_SPRITE, spriteX, spriteY, spriteWidth, spriteHeight, null);
+        } else {
+            g.drawImage(BLUE_MINER_SPRITE, spriteX + spriteWidth, spriteY, -spriteWidth, spriteHeight, null);
+        }
+
+        int bubbleX = birdX + 18;
+        int bubbleY = spriteY + 25;
+        drawHarvestEffect(g, bubbleX, bubbleY, mineX, facingRight);
+        drawCarryBubble(g, bubbleX, spriteY + 42);
+        return true;
     }
 
     private void drawShadow(Graphics2D g, int birdX, int floorY) {
@@ -195,16 +236,16 @@ public class Bird {
     private void drawLegs(Graphics2D g, int birdX, int birdY) {
         int step = (int) (Math.sin(animationTime * 12) * 4);
         g.setColor(new Color(255, 176, 60));
-        g.drawLine(birdX + 15, birdY + 36, birdX + 10 + step, birdY + 48);
-        g.drawLine(birdX + 28, birdY + 36, birdX + 31 - step, birdY + 48);
+        g.drawLine(birdX + 17, birdY + 42, birdX + 11 + step, birdY + 54);
+        g.drawLine(birdX + 32, birdY + 42, birdX + 35 - step, birdY + 54);
     }
 
     private void drawTail(Graphics2D g, int birdX, int birdY, boolean facingRight) {
-        int tailX = facingRight ? birdX - 11 : birdX + 34;
+        int tailX = facingRight ? birdX - 13 : birdX + 39;
         g.setColor(darkColor);
         g.fillPolygon(
-                new int[]{tailX, tailX + (facingRight ? 17 : -17), tailX + (facingRight ? 15 : -15)},
-                new int[]{birdY + 24, birdY + 14, birdY + 34},
+                new int[]{tailX, tailX + (facingRight ? 21 : -21), tailX + (facingRight ? 18 : -18)},
+                new int[]{birdY + 27, birdY + 15, birdY + 39},
                 3
         );
     }
@@ -212,73 +253,99 @@ public class Bird {
     private void drawWing(Graphics2D g, int birdX, int birdY) {
         int flap = (int) (Math.sin(animationTime * 10) * 5);
         g.setColor(darkColor);
-        g.fillOval(birdX + 8, birdY + 20 + flap / 2, 30, 18);
+        g.fillOval(birdX + 7, birdY + 23 + flap / 2, 34, 20);
         g.setColor(color.brighter());
-        g.drawArc(birdX + 12, birdY + 23 + flap / 2, 20, 12, 20, 140);
+        g.drawArc(birdX + 12, birdY + 26 + flap / 2, 23, 12, 20, 140);
     }
 
     private void drawBody(Graphics2D g, int birdX, int birdY, boolean facingRight) {
-        int faceX = facingRight ? birdX + 28 : birdX + 4;
-        int beakPointX = facingRight ? birdX + 58 : birdX - 10;
-        int beakBaseX = facingRight ? birdX + 40 : birdX + 2;
+        int eyeX = facingRight ? birdX + 30 : birdX + 6;
+        int beakPointX = facingRight ? birdX + 61 : birdX - 11;
+        int beakBaseX = facingRight ? birdX + 43 : birdX + 5;
 
+        g.setColor(new Color(15, 21, 31, 95));
+        g.fillOval(birdX - 2, birdY + 3, SIZE + 4, SIZE);
         g.setColor(color);
-        g.fillOval(birdX, birdY, SIZE, SIZE);
+        g.fillOval(birdX, birdY + 1, SIZE, SIZE - 1);
 
         g.setColor(color.brighter());
-        g.fillOval(birdX + 9, birdY + 5, 21, 16);
+        g.fillOval(birdX + 12, birdY + 8, 23, 16);
+
+        g.setColor(new Color(255, 255, 255, 52));
+        g.fillOval(birdX + 8, birdY + 7, 15, 12);
 
         g.setColor(new Color(255, 214, 87));
         g.fillPolygon(
                 new int[]{beakBaseX, beakPointX, beakBaseX},
-                new int[]{birdY + 17, birdY + 24, birdY + 31},
+                new int[]{birdY + 20, birdY + 27, birdY + 34},
                 3
         );
+        g.setColor(new Color(205, 126, 28));
+        g.drawLine(beakBaseX, birdY + 27, beakPointX - (facingRight ? 5 : -5), birdY + 27);
 
         g.setColor(Color.WHITE);
-        g.fillOval(faceX, birdY + 10, 10, 10);
+        g.fillOval(eyeX, birdY + 12, 14, 14);
 
         g.setColor(Color.BLACK);
-        g.fillOval(faceX + 4, birdY + 13, 4, 4);
+        g.fillOval(eyeX + (facingRight ? 7 : 3), birdY + 16, 5, 5);
+        g.setColor(Color.WHITE);
+        g.fillOval(eyeX + (facingRight ? 9 : 5), birdY + 16, 2, 2);
+
+        g.setColor(new Color(255, 145, 115, 95));
+        g.fillOval(facingRight ? birdX + 25 : birdX + 13, birdY + 29, 9, 6);
 
         g.setColor(darkColor);
         g.fillPolygon(
-                new int[]{birdX + 15, birdX + 22, birdX + 29},
-                new int[]{birdY - 2, birdY - 13, birdY - 2},
+                new int[]{birdX + 16, birdX + 24, birdX + 32},
+                new int[]{birdY + 1, birdY - 13, birdY + 1},
                 3
         );
 
-        drawMinerHelmet(g, birdX + 4, birdY - 4);
+        g.setColor(new Color(83, 47, 31));
+        g.fillRoundRect(birdX + 14, birdY + 38, 25, 6, 5, 5);
+
+        drawMinerHelmet(g, birdX + 4, birdY - 6);
     }
 
     private void drawMinerHelmet(Graphics2D g, int x, int y) {
         g.setColor(new Color(220, 151, 45));
-        g.fillArc(x, y, 34, 25, 0, 180);
+        g.fillArc(x, y, 40, 28, 0, 180);
+        g.setColor(new Color(255, 199, 75));
+        g.fillArc(x + 7, y + 3, 22, 14, 0, 180);
         g.setColor(new Color(115, 72, 32));
-        g.fillRoundRect(x + 2, y + 12, 31, 7, 5, 5);
+        g.fillRoundRect(x + 1, y + 14, 38, 8, 5, 5);
         g.setColor(new Color(126, 225, 255));
-        g.fillOval(x + 22, y + 5, 12, 12);
+        g.fillOval(x + 25, y + 5, 14, 14);
         g.setColor(Color.WHITE);
-        g.drawOval(x + 22, y + 5, 12, 12);
+        g.drawOval(x + 25, y + 5, 14, 14);
     }
 
-    private void drawGemPack(Graphics2D g, int birdX, int birdY) {
+    private void drawGemCart(Graphics2D g, int birdX, int birdY, boolean facingRight) {
         if (carriedGems <= 0) {
             return;
         }
 
-        g.setColor(new Color(95, 58, 42));
-        g.fillRoundRect(birdX + 9, birdY - 12, 27, 15, 7, 7);
+        int cartX = facingRight ? birdX + 38 : birdX - 33;
+        int cartY = birdY + 30;
 
-        for (int i = 0; i < 2; i++) {
-            int gemX = birdX + 13 + i * 13;
-            g.setColor(gemColor);
-            g.fillPolygon(
-                    new int[]{gemX + 5, gemX + 10, gemX + 5, gemX},
-                    new int[]{birdY - 10, birdY - 5, birdY + 1, birdY - 5},
-                    4
-            );
+        g.setColor(new Color(78, 48, 33));
+        g.fillRoundRect(cartX + 2, cartY + 15, 38, 19, 6, 6);
+        g.setColor(new Color(139, 82, 45));
+        g.fillPolygon(new int[]{cartX, cartX + 44, cartX + 37, cartX + 7}, new int[]{cartY + 6, cartY + 6, cartY + 28, cartY + 28}, 4);
+        g.setColor(new Color(59, 38, 29));
+        g.fillOval(cartX + 5, cartY + 28, 9, 9);
+        g.fillOval(cartX + 31, cartY + 28, 9, 9);
+
+        for (int i = 0; i < 4; i++) {
+            drawTinyGem(g, cartX + 9 + i * 8, cartY - 2 + (i % 2) * 4);
         }
+    }
+
+    private void drawTinyGem(Graphics2D g, int x, int y) {
+        g.setColor(gemColor);
+        g.fillPolygon(new int[]{x + 5, x + 10, x + 5, x}, new int[]{y, y + 5, y + 11, y + 5}, 4);
+        g.setColor(Color.WHITE);
+        g.drawLine(x + 5, y + 1, x + 9, y + 5);
     }
 
     private void drawHarvestEffect(Graphics2D g, int birdX, int birdY, int mineX, boolean facingRight) {
@@ -370,7 +437,7 @@ public class Bird {
     }
 
     public boolean canUnlockAutoMining() {
-        return isLevelFifteen() && !autoMiningUnlocked;
+        return !autoMiningUnlocked;
     }
 
     public int getSpeedCost(int mineId) {
@@ -386,7 +453,7 @@ public class Bird {
     }
 
     public int getAutoMiningCost(int mineId) {
-        return scaledCost(900, mineId);
+        return scaledCost(100, mineId);
     }
 
     private int scaledCost(int baseCost, int mineId) {
@@ -398,7 +465,7 @@ public class Bird {
     }
 
     public int getProgressLevel() {
-        return speedLevel + strengthLevel + miningLevel + (autoMiningUnlocked ? 1 : 0);
+        return speedLevel + strengthLevel + miningLevel;
     }
 
     public String getName() {

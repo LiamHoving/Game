@@ -10,7 +10,7 @@ Gem Nest Miner is a Java idle miner prototype about birds collecting gems inside
 - Every mine starts with a blue bird.
 - Each bird has 5 walking speed levels, 5 strength levels, and 5 mining speed levels.
 - The blue bird reaches level 15 when all three upgrade paths are maxed.
-- Birds must be tapped to start mining until the Auto Mine level 16 upgrade is bought.
+- Birds must be tapped to start mining until Auto Mine is bought.
 - A level 15 blue bird unlocks the option to add a green bird to the same mine.
 - Green birds use the same upgrade system, but start stronger and scale better.
 - A strong lift bird slowly carries gems from the mine basket to the surface.
@@ -19,7 +19,7 @@ Gem Nest Miner is a Java idle miner prototype about birds collecting gems inside
 - If transport birds cannot carry every waiting gem, leftovers stay in the mine storage box.
 - Gems in the homebase become the player's inventory.
 - The top-left inventory uses a small chest badge instead of a large title panel.
-- The screen uses stacked mine rows, a surface station, a side home tower, and an upgrade board.
+- The screen uses stacked mine rows, a left lift tower, a surface station, a bird-owned home nest tower, and an upgrade board.
 - Upgrade cards appear in a large panel on the right.
 - Clicking a mine shows bird walking speed, strength, mining speed, and green bird controls.
 - Clicking a new mine sign lets the player buy another mine.
