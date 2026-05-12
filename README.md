@@ -1,6 +1,8 @@
 # Game
 Liam van Hoving
+
 Idle Miner game
+
 Ideas;
 
 
