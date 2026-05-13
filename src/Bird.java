@@ -10,7 +10,7 @@ import javax.imageio.ImageIO;
 public class Bird {
     private static final int SIZE = 48;
     private static final int MAX_STAT_LEVEL = 5;
-    private static final Image BLUE_MINER_SPRITE = loadSprite("assets/blue_miner_reference.png");
+    private static final Image BLUE_MINER_SPRITE = loadSprite("assets/blue_bird_new.png");
 
     private final String name;
     private final Color color;
@@ -209,22 +209,22 @@ public class Bird {
             return false;
         }
 
-        int spriteWidth = 126;
-        int spriteHeight = 84;
-        int spriteX = birdX - 22;
-        int spriteY = floorY - spriteHeight - 8 + laneOffset;
+        int spriteWidth = 50;
+        int spriteHeight = 58;
+        int spriteX = birdX - 7;
+        int spriteY = floorY - spriteHeight - 3 + laneOffset;
 
-        drawShadow(g, birdX + 20, floorY + laneOffset);
+        drawShadow(g, birdX + 4, floorY + laneOffset);
         if (facingRight) {
             g.drawImage(BLUE_MINER_SPRITE, spriteX, spriteY, spriteWidth, spriteHeight, null);
         } else {
             g.drawImage(BLUE_MINER_SPRITE, spriteX + spriteWidth, spriteY, -spriteWidth, spriteHeight, null);
         }
 
-        int bubbleX = birdX + 18;
-        int bubbleY = spriteY + 25;
+        int bubbleX = birdX - 2;
+        int bubbleY = spriteY + 18;
         drawHarvestEffect(g, bubbleX, bubbleY, mineX, facingRight);
-        drawCarryBubble(g, bubbleX, spriteY + 42);
+        drawCarryBubble(g, bubbleX, spriteY + 35);
         return true;
     }
 

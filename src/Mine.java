@@ -3,7 +3,7 @@ import java.util.ArrayList;
 import java.util.List;
 
 public class Mine {
-    private static final int TUNNEL_LENGTH = 230;
+    private static final int TUNNEL_LENGTH = 205;
 
     private final int id;
     private final String name;
@@ -88,7 +88,7 @@ public class Mine {
         return mouseX >= getCaveX()
                 && mouseX <= getCaveX() + getCaveWidth()
                 && mouseY >= getCaveY()
-                && mouseY <= getCaveY() + 98;
+                && mouseY <= getCaveY() + 82;
     }
 
     public boolean canUnlockGreenBird() {
@@ -116,7 +116,7 @@ public class Mine {
     }
 
     public int getCaveY() {
-        return floorY - 105;
+        return floorY - 92;
     }
 
     public int getLeftX() {
@@ -136,7 +136,7 @@ public class Mine {
     }
 
     public int getCaveWidth() {
-        return getTunnelLength() + 112;
+        return getTunnelLength() + 96;
     }
 
     public int getBasketCenterX() {

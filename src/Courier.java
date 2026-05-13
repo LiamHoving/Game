@@ -8,7 +8,8 @@ import javax.imageio.ImageIO;
 
 public class Courier {
     private static final int MAX_STAT_LEVEL = 5;
-    private static final Image LIFT_BIRD_SPRITE = loadSprite("assets/lift_bird_reference.png");
+    private static final Image LIFT_BIRD_SPRITE = loadSprite("assets/yellow_bird_new.png");
+    private static final Image RUNNER_BIRD_SPRITE = loadSprite("assets/purple_bird_new.png");
 
     private final String name;
     private final Color color;
@@ -177,7 +178,7 @@ public class Courier {
 
     private void drawStrongLiftBird(Graphics2D g, int x, int y) {
         if (LIFT_BIRD_SPRITE != null) {
-            g.drawImage(LIFT_BIRD_SPRITE, x - 24, y - 24, 92, 79, null);
+            g.drawImage(LIFT_BIRD_SPRITE, x - 18, y - 23, 58, 67, null);
             return;
         }
 
@@ -227,6 +228,11 @@ public class Courier {
     }
 
     private void drawRunnerBird(Graphics2D g, int x, int y) {
+        if (RUNNER_BIRD_SPRITE != null) {
+            g.drawImage(RUNNER_BIRD_SPRITE, x - 16, y - 20, 54, 61, null);
+            return;
+        }
+
         g.setColor(color.darker());
         g.fillPolygon(new int[]{x - 8, x + 6, x + 5}, new int[]{y + 23, y + 13, y + 33}, 3);
         g.fillOval(x + 5, y + 20, 27, 17);
@@ -260,10 +266,14 @@ public class Courier {
 
     private void drawGemLoad(Graphics2D g, int x, int y) {
         if (strongCarrier) {
+            g.setColor(new Color(75, 48, 34));
+            g.fillRoundRect(x - 15, y + 41, 40, 15, 6, 6);
+            g.setColor(new Color(142, 88, 45));
+            g.drawLine(x - 12, y + 43, x + 22, y + 43);
             g.setColor(new Color(95, 205, 255));
-            for (int i = 0; i < 4; i++) {
-                g.fillOval(x - 4 + i * 9, y + 29 + (i % 2) * 4, 8, 8);
-            }
+            g.fillOval(x - 8, y + 35, 7, 7);
+            g.fillOval(x + 2, y + 37, 7, 7);
+            g.fillOval(x + 12, y + 35, 7, 7);
         } else {
             g.setColor(new Color(96, 59, 37));
             g.fillRoundRect(x - 17, y + 30, 31, 16, 5, 5);
@@ -338,6 +348,33 @@ public class Courier {
 
     public boolean isBusy() {
         return busy;
+    }
+
+    public boolean isPickingUp() {
+        return busy && pickingUp;
+    }
+
+    public int getLoad() {
+        return load;
+    }
+
+    public int getDrawX() {
+        return getCurrentX();
+    }
+
+    public int getDrawY() {
+        return getCurrentY();
+    }
+
+    public String getStatusText() {
+        if (!busy) {
+            return "";
+        }
+
+        if (pickingUp) {
+            return String.format("pick %.1fs", Math.max(0, pickupTimer));
+        }
+        return String.format("move %.1fs", Math.max(0, (1 - progress) / getMoveSpeed()));
     }
 
     public boolean canUpgradeMove() {
