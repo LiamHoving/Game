@@ -37,6 +37,8 @@ public class GamePanel extends JPanel {
     private static final Image HOME_NEST_ART = loadSprite("assets/home_nest_design.png");
     private static final Image LIFT_EMPTY_ART = loadSprite("assets/lift_empty_design.png");
     private static final Image LIFT_FULL_ART = loadSprite("assets/lift_full_design.png");
+    private static final Image LIFT_CABIN_EMPTY_ART = loadSprite("assets/lift_cabin_empty_design.png");
+    private static final Image LIFT_CABIN_FULL_ART = loadSprite("assets/lift_cabin_full_design.png");
     private static final Image GEM_SINGLE_ART = loadSprite("assets/gem_single_design.png");
     private static final Image GEM_SMALL_PILE_ART = loadSprite("assets/gem_small_pile_design.png");
     private static final Image GEM_MEDIUM_PILE_ART = loadSprite("assets/gem_medium_pile_design.png");
@@ -660,9 +662,7 @@ public class GamePanel extends JPanel {
     }
 
     private void drawLiftTower(Graphics2D g) {
-        Image liftArt = leafLift.getLoad() > 0 && !leafLift.isPickingUp() && LIFT_FULL_ART != null
-                ? LIFT_FULL_ART
-                : LIFT_EMPTY_ART;
+        Image liftArt = LIFT_EMPTY_ART;
 
         if (liftArt != null) {
             int x = 9;
@@ -676,6 +676,8 @@ public class GamePanel extends JPanel {
             }
 
             g.drawImage(liftArt, x, y, w, h, null);
+            coverStaticLiftCabin(g, x, y, w, h);
+            drawMovingLiftCabin(g, x, y, w, h);
             drawLiftPickupGemFlow(g, x, y, w, h);
             drawLiftStatusText(g, x + 84, leafLift.getDrawY());
 
@@ -701,6 +703,49 @@ public class GamePanel extends JPanel {
         g.setFont(new Font("Arial", Font.BOLD, 15));
         g.setColor(Color.WHITE);
         drawCentered(g, "Lift Birds", 92, 234);
+    }
+
+    private void coverStaticLiftCabin(Graphics2D g, int liftX, int liftY, int liftW, int liftH) {
+        int shaftX = liftX + 44;
+        int shaftY = liftY + 118;
+        int shaftW = 80;
+        int shaftH = 146;
+
+        g.setColor(new Color(18, 15, 12, 238));
+        g.fillRoundRect(shaftX, shaftY, shaftW, shaftH, 12, 12);
+        g.setColor(new Color(45, 39, 31, 155));
+        for (int i = 0; i < 5; i++) {
+            g.fillOval(shaftX + 6 + i * 14, shaftY + 10 + (i % 2) * 17, 20, 16);
+            g.fillOval(shaftX + 2 + i * 13, shaftY + 76 + (i % 3) * 12, 18, 14);
+        }
+
+        g.setColor(new Color(72, 76, 75));
+        g.setStroke(new BasicStroke(3));
+        g.drawLine(shaftX + 20, liftY + 72, shaftX + 20, liftY + liftH - 34);
+        g.drawLine(shaftX + shaftW - 21, liftY + 72, shaftX + shaftW - 21, liftY + liftH - 34);
+        g.setColor(new Color(171, 177, 170));
+        g.setStroke(new BasicStroke(1));
+        for (int linkY = liftY + 78; linkY < liftY + liftH - 38; linkY += 12) {
+            g.drawOval(shaftX + 16, linkY, 8, 10);
+            g.drawOval(shaftX + shaftW - 25, linkY, 8, 10);
+        }
+    }
+
+    private void drawMovingLiftCabin(Graphics2D g, int liftX, int liftY, int liftW, int liftH) {
+        Image cabinArt = leafLift.getLoad() > 0 && !leafLift.isTravelingToPickup() && LIFT_CABIN_FULL_ART != null
+                ? LIFT_CABIN_FULL_ART
+                : LIFT_CABIN_EMPTY_ART;
+        if (cabinArt == null) {
+            return;
+        }
+
+        int cabinW = 104;
+        int cabinH = 140;
+        int cabinX = liftX + 32;
+        int cabinY = leafLift.getDrawY() - 68;
+        cabinY = Math.max(liftY + 80, Math.min(liftY + liftH - cabinH - 18, cabinY));
+
+        g.drawImage(cabinArt, cabinX, cabinY, cabinW, cabinH, null);
     }
 
     private void drawLiftPickupGemFlow(Graphics2D g, int liftX, int liftY, int liftW, int liftH) {
@@ -1405,9 +1450,9 @@ public class GamePanel extends JPanel {
         g.setFont(new Font("Arial", Font.PLAIN, 13));
         g.setColor(new Color(226, 238, 255));
         g.drawString("Capacity: " + courier.getCapacity() + " gems", x + 18, y + 52);
-        optionOne.drawSmallCard(g, "Move", "Lv." + courier.getMoveLevel(), courier.canUpgradeMove() ? courier.getMoveCost() + "" : "max", "runner", courier.canUpgradeMove() && bank.canAfford(courier.getMoveCost()));
-        optionTwo.drawSmallCard(g, "Pickup", "Lv." + courier.getPickupLevel(), courier.canUpgradePickup() ? courier.getPickupCost() + "" : "max", "clock", courier.canUpgradePickup() && bank.canAfford(courier.getPickupCost()));
-        optionThree.drawSmallCard(g, "Capacity", "Lv." + courier.getCapacityLevel(), courier.canUpgradeCapacity() ? courier.getCapacityCost() + "" : "max", "box", courier.canUpgradeCapacity() && bank.canAfford(courier.getCapacityCost()));
+        optionOne.drawSmallCard(g, "Move", "Lv." + courier.getMoveLevel() + "/" + courier.getMaxStatLevel(), courier.canUpgradeMove() ? courier.getMoveCost() + "" : "max", "runner", courier.canUpgradeMove() && bank.canAfford(courier.getMoveCost()));
+        optionTwo.drawSmallCard(g, "Pickup", "Lv." + courier.getPickupLevel() + "/" + courier.getMaxStatLevel(), courier.canUpgradePickup() ? courier.getPickupCost() + "" : "max", "clock", courier.canUpgradePickup() && bank.canAfford(courier.getPickupCost()));
+        optionThree.drawSmallCard(g, "Capacity", "Lv." + courier.getCapacityLevel() + "/" + courier.getMaxStatLevel(), courier.canUpgradeCapacity() ? courier.getCapacityCost() + "" : "max", "box", courier.canUpgradeCapacity() && bank.canAfford(courier.getCapacityCost()));
     }
 
     private void positionContextButtons() {

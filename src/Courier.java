@@ -7,7 +7,7 @@ import java.io.IOException;
 import javax.imageio.ImageIO;
 
 public class Courier {
-    private static final int MAX_STAT_LEVEL = 5;
+    private static final int MAX_STAT_LEVEL = 30;
     private static final Image LIFT_BIRD_SPRITE = loadSprite("assets/yellow_bird_new.png");
     private static final Image RUNNER_BIRD_SPRITE = loadSprite("assets/purple_bird_new.png");
 
@@ -21,12 +21,15 @@ public class Courier {
     private int startY;
     private int endX;
     private int endY;
+    private int idleX;
+    private int idleY;
     private int moveLevel = 1;
     private int pickupLevel = 1;
     private int capacityLevel = 1;
     private double progress;
     private double pickupTimer;
     private boolean busy;
+    private boolean travelingToPickup;
     private boolean pickingUp;
     private int load;
 
@@ -50,6 +53,8 @@ public class Courier {
         this.strongCarrier = strongCarrier;
         this.baseSpeed = baseSpeed;
         this.baseCapacity = baseCapacity;
+        this.idleX = startX;
+        this.idleY = startY;
     }
 
     public void setRoute(int startX, int startY, int endX, int endY) {
@@ -66,8 +71,9 @@ public class Courier {
     public void startTrip(int load) {
         this.load = load;
         progress = 0;
-        pickupTimer = getPickupSeconds();
-        pickingUp = true;
+        travelingToPickup = idleX != startX || idleY != startY;
+        pickingUp = !travelingToPickup;
+        pickupTimer = pickingUp ? getPickupSeconds() : 0;
         busy = true;
     }
 
@@ -76,7 +82,18 @@ public class Courier {
             return 0;
         }
 
-        if (pickingUp) {
+        if (travelingToPickup) {
+            progress += getMoveSpeed() * deltaSeconds;
+            if (progress >= 1) {
+                idleX = startX;
+                idleY = startY;
+                progress = 0;
+                travelingToPickup = false;
+                pickingUp = true;
+                pickupTimer = getPickupSeconds();
+            }
+            return 0;
+        } else if (pickingUp) {
             pickupTimer -= deltaSeconds;
             if (pickupTimer <= 0) {
                 pickingUp = false;
@@ -90,6 +107,8 @@ public class Courier {
             progress = 0;
             int delivered = load;
             load = 0;
+            idleX = endX;
+            idleY = endY;
             return delivered;
         }
 
@@ -324,26 +343,32 @@ public class Courier {
     }
 
     private int getCurrentX() {
+        if (travelingToPickup) {
+            return (int) (idleX + (startX - idleX) * progress);
+        }
         if (pickingUp) {
             return startX;
         }
-        return busy ? (int) (startX + (endX - startX) * progress) : startX;
+        return busy ? (int) (startX + (endX - startX) * progress) : idleX;
     }
 
     private int getCurrentY() {
+        if (travelingToPickup) {
+            return (int) (idleY + (startY - idleY) * progress);
+        }
         if (pickingUp) {
             return startY;
         }
-        return busy ? (int) (startY + (endY - startY) * progress) : startY;
+        return busy ? (int) (startY + (endY - startY) * progress) : idleY;
     }
 
     private double getPickupSeconds() {
         double basePickup = strongCarrier ? 2.2 : 1.7;
-        return Math.max(0.55, basePickup - (pickupLevel - 1) * 0.28);
+        return Math.max(0.35, basePickup * Math.pow(0.94, pickupLevel - 1));
     }
 
     private double getMoveSpeed() {
-        return baseSpeed + (moveLevel - 1) * 0.05;
+        return baseSpeed * (1.0 + (moveLevel - 1) * 0.09);
     }
 
     public boolean isBusy() {
@@ -352,6 +377,10 @@ public class Courier {
 
     public boolean isPickingUp() {
         return busy && pickingUp;
+    }
+
+    public boolean isTravelingToPickup() {
+        return busy && travelingToPickup;
     }
 
     public int getLoad() {
@@ -371,7 +400,10 @@ public class Courier {
             return "";
         }
 
-        if (pickingUp) {
+        if (travelingToPickup) {
+            double remaining = Math.max(0, (1 - progress) / getMoveSpeed());
+            return strongCarrier ? String.format("down %.1fs", remaining) : String.format("back %.1fs", remaining);
+        } else if (pickingUp) {
             return String.format("pick %.1fs", Math.max(0, pickupTimer));
         }
         return String.format("move %.1fs", Math.max(0, (1 - progress) / getMoveSpeed()));
@@ -390,19 +422,19 @@ public class Courier {
     }
 
     public int getCapacity() {
-        return baseCapacity + (capacityLevel - 1) * (strongCarrier ? 20 : 15);
+        return baseCapacity + (capacityLevel - 1) * (strongCarrier ? 18 : 14);
     }
 
     public int getMoveCost() {
-        return 130 + moveLevel * 115;
+        return 130 + moveLevel * 115 + moveLevel * moveLevel * 6;
     }
 
     public int getPickupCost() {
-        return 115 + pickupLevel * 105;
+        return 115 + pickupLevel * 105 + pickupLevel * pickupLevel * 5;
     }
 
     public int getCapacityCost() {
-        return 155 + capacityLevel * 135;
+        return 155 + capacityLevel * 135 + capacityLevel * capacityLevel * 7;
     }
 
     public int getMoveLevel() {
@@ -415,6 +447,10 @@ public class Courier {
 
     public int getCapacityLevel() {
         return capacityLevel;
+    }
+
+    public int getMaxStatLevel() {
+        return MAX_STAT_LEVEL;
     }
 
     public String getName() {

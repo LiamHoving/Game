@@ -1,5 +1,5 @@
 public class GemBank {
-    private int gems = 10000;
+    private int gems = 200000;
     private int totalEarned;
 
     public void add(int amount) {
