@@ -89,10 +89,10 @@ public class Mine {
     }
 
     public boolean contains(int mouseX, int mouseY) {
-        return mouseX >= getCaveX()
-                && mouseX <= getCaveX() + getCaveWidth()
-                && mouseY >= getCaveY()
-                && mouseY <= getCaveY() + 82;
+        return mouseX >= getCaveX() - 24
+                && mouseX <= getCaveX() + getCaveWidth() + 190
+                && mouseY >= floorY - 106
+                && mouseY <= floorY + 26;
     }
 
     public boolean canUnlockGreenBird() {
@@ -128,7 +128,7 @@ public class Mine {
     }
 
     public int getGemWallX() {
-        return leftX + getTunnelLength();
+        return leftX + 258;
     }
 
     public int getBasketX() {
@@ -149,27 +149,6 @@ public class Mine {
 
     public int getStationGems() {
         return stationGems;
-    }
-
-    public int getVisualTier() {
-        int progress = getBlueBird().getProgressLevel();
-        if (greenBirdUnlocked) {
-            progress += getGreenBird().getProgressLevel();
-        }
-
-        if (progress >= 24) {
-            return 4;
-        }
-        if (progress >= 18) {
-            return 3;
-        }
-        if (progress >= 12) {
-            return 2;
-        }
-        if (progress >= 7) {
-            return 1;
-        }
-        return 0;
     }
 
     public Bird getBlueBird() {

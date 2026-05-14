@@ -364,9 +364,6 @@ public class Bird {
 
         g.setColor(new Color(255, 220, 80));
         g.fillOval(sparkX, birdY + 15, 7, 7);
-        g.setColor(gemColor);
-        g.fillOval(sparkX + 8, birdY + 29, 7, 7);
-        g.fillOval(sparkX + 17, birdY + 20, 5, 5);
     }
 
     private void drawCarryBubble(Graphics2D g, int birdX, int birdY) {

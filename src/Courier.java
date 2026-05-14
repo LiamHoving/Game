@@ -387,6 +387,14 @@ public class Courier {
         return baseSpeed * (1.0 + (moveLevel - 1) * 0.09);
     }
 
+    public double getPickupSecondsForSimulation() {
+        return getPickupSeconds();
+    }
+
+    public double getMoveSpeedForSimulation() {
+        return getMoveSpeed();
+    }
+
     public boolean isBusy() {
         return busy;
     }
