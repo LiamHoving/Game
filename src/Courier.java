@@ -31,6 +31,8 @@ public class Courier {
     private boolean busy;
     private boolean travelingToPickup;
     private boolean pickingUp;
+    private boolean facingRight = true;
+    private int pendingLoad;
     private int load;
 
     public Courier(
@@ -69,11 +71,13 @@ public class Courier {
     }
 
     public void startTrip(int load) {
-        this.load = load;
+        this.pendingLoad = load;
         progress = 0;
         travelingToPickup = idleX != startX || idleY != startY;
         pickingUp = !travelingToPickup;
+        this.load = pickingUp ? pendingLoad : 0;
         pickupTimer = pickingUp ? getPickupSeconds() : 0;
+        facingRight = travelingToPickup ? startX >= idleX : endX >= startX;
         busy = true;
     }
 
@@ -90,7 +94,9 @@ public class Courier {
                 progress = 0;
                 travelingToPickup = false;
                 pickingUp = true;
+                load = pendingLoad;
                 pickupTimer = getPickupSeconds();
+                facingRight = endX >= startX;
             }
             return 0;
         } else if (pickingUp) {
@@ -107,6 +113,7 @@ public class Courier {
             progress = 0;
             int delivered = load;
             load = 0;
+            pendingLoad = 0;
             idleX = endX;
             idleY = endY;
             return delivered;
@@ -163,7 +170,7 @@ public class Courier {
         if (strongCarrier) {
             drawStrongLiftBird(g, x, y);
         } else {
-            drawRunnerBird(g, x, y);
+            drawRunnerBird(g, x, y, facingRight);
         }
 
         if (load > 0) {
@@ -246,9 +253,17 @@ public class Courier {
         }
     }
 
-    private void drawRunnerBird(Graphics2D g, int x, int y) {
+    private void drawRunnerBird(Graphics2D g, int x, int y, boolean facingRight) {
         if (RUNNER_BIRD_SPRITE != null) {
-            g.drawImage(RUNNER_BIRD_SPRITE, x - 16, y - 20, 54, 61, null);
+            int spriteW = 54;
+            int spriteH = 61;
+            int spriteX = x - 16;
+            int spriteY = y - 20;
+            if (facingRight) {
+                g.drawImage(RUNNER_BIRD_SPRITE, spriteX, spriteY, spriteW, spriteH, null);
+            } else {
+                g.drawImage(RUNNER_BIRD_SPRITE, spriteX + spriteW, spriteY, -spriteW, spriteH, null);
+            }
             return;
         }
 
@@ -315,9 +330,10 @@ public class Courier {
             return;
         }
 
-        String label = pickingUp
-                ? String.format("pick %.1fs", Math.max(0, pickupTimer))
-                : String.format("move %.1fs", Math.max(0, (1 - progress) / getMoveSpeed()));
+        String label = getStatusText();
+        if (label.isEmpty()) {
+            return;
+        }
 
         int bubbleWidth = 78;
         int bubbleX = x - 22;
@@ -402,11 +418,13 @@ public class Courier {
 
         if (travelingToPickup) {
             double remaining = Math.max(0, (1 - progress) / getMoveSpeed());
-            return strongCarrier ? String.format("down %.1fs", remaining) : String.format("back %.1fs", remaining);
+            return strongCarrier ? "" : String.format("back %.1fs", remaining);
         } else if (pickingUp) {
-            return String.format("pick %.1fs", Math.max(0, pickupTimer));
+            return strongCarrier
+                    ? String.format("load %.1fs", Math.max(0, pickupTimer))
+                    : String.format("pick %.1fs", Math.max(0, pickupTimer));
         }
-        return String.format("move %.1fs", Math.max(0, (1 - progress) / getMoveSpeed()));
+        return strongCarrier ? "" : String.format("move %.1fs", Math.max(0, (1 - progress) / getMoveSpeed()));
     }
 
     public boolean canUpgradeMove() {

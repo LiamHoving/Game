@@ -26,6 +26,8 @@ public class GamePanel extends JPanel {
     private static final int MINE_ROW_GAP = 118;
     private static final int SURFACE_Y = 170;
     private static final int LIFT_X = 92;
+    private static final int LIFT_CHAIN_OFFSET = 15;
+    private static final int SURFACE_PICKUP_X = 278;
     private static final int TOWER_X = 918;
     private static final int TOWER_W = 146;
     private static final int MINE_VIEW_TOP = 270;
@@ -39,6 +41,13 @@ public class GamePanel extends JPanel {
     private static final Image LIFT_FULL_ART = loadSprite("assets/lift_full_design.png");
     private static final Image LIFT_CABIN_EMPTY_ART = loadSprite("assets/lift_cabin_empty_design.png");
     private static final Image LIFT_CABIN_FULL_ART = loadSprite("assets/lift_cabin_full_design.png");
+    private static final Image LIFT_BIRD_ART = loadSprite("assets/yellow_bird_new.png");
+    private static final Image LIFT_TOWER_EMPTY_ART = loadSprite("assets/lift_tower_empty.png");
+    private static final Image LIFT_TOWER_SINGLE_ART = loadSprite("assets/lift_tower_single.png");
+    private static final Image LIFT_TOWER_FEW_ART = loadSprite("assets/lift_tower_few.png");
+    private static final Image LIFT_TOWER_MEDIUM_ART = loadSprite("assets/lift_tower_medium.png");
+    private static final Image LIFT_TOWER_MANY_ART = loadSprite("assets/lift_tower_many.png");
+    private static final Image LIFT_TOWER_FULL_ART = loadSprite("assets/lift_tower_full.png");
     private static final Image GEM_SINGLE_ART = loadSprite("assets/gem_single_design.png");
     private static final Image GEM_SMALL_PILE_ART = loadSprite("assets/gem_small_pile_design.png");
     private static final Image GEM_MEDIUM_PILE_ART = loadSprite("assets/gem_medium_pile_design.png");
@@ -59,7 +68,7 @@ public class GamePanel extends JPanel {
     );
     private final Courier nestRunner = new Courier(
             "Swift Nest Bird",
-            LIFT_X,
+            SURFACE_PICKUP_X,
             SURFACE_Y,
             TOWER_X + 72,
             SURFACE_Y,
@@ -74,10 +83,13 @@ public class GamePanel extends JPanel {
     private boolean selectedGreenBird;
     private boolean mineUpgradePopupOpen;
     private int surfaceGems;
-    private int surfaceStationX = LIFT_X;
+    private int surfaceStationX = SURFACE_PICKUP_X;
+    private int lastLiftDropoffGems;
     private double worldTime;
+    private double liftDropoffTimer;
     private double mineScrollY;
     private long lastUpdateTime;
+    private final List<Integer> liftPickupRawYs = new ArrayList<>();
 
     private final Button optionOne = new Button();
     private final Button optionTwo = new Button();
@@ -130,25 +142,48 @@ public class GamePanel extends JPanel {
         double deltaSeconds = (now - lastUpdateTime) / 1_000_000_000.0;
         lastUpdateTime = now;
         worldTime += deltaSeconds;
+        liftDropoffTimer = Math.max(0, liftDropoffTimer - deltaSeconds);
 
         for (Mine mine : mines) {
             mine.update(deltaSeconds);
         }
 
         if (!leafLift.isBusy()) {
-            Mine sourceMine = findMineWithGems();
-            if (sourceMine != null) {
-                int load = sourceMine.collectFromStation(leafLift.getCapacity());
-                int liftPickupY = screenY(sourceMine.getFloorY()) - 55;
-                leafLift.setRoute(LIFT_X, liftPickupY, LIFT_X, SURFACE_Y);
+            int remainingCapacity = leafLift.getCapacity();
+            int load = 0;
+            int deepestPickupY = SURFACE_Y;
+            List<Integer> pickupRows = new ArrayList<>();
+
+            for (Mine mine : mines) {
+                if (remainingCapacity <= 0) {
+                    break;
+                }
+
+                int collected = mine.collectFromStation(remainingCapacity);
+                if (collected > 0) {
+                    load += collected;
+                    remainingCapacity -= collected;
+                    int pickupRawY = mine.getFloorY() - 55;
+                    pickupRows.add(pickupRawY);
+                    deepestPickupY = Math.max(deepestPickupY, screenY(pickupRawY));
+                }
+            }
+
+            if (load > 0) {
+                leafLift.setRoute(LIFT_X, deepestPickupY, LIFT_X, SURFACE_Y);
                 leafLift.startTrip(load);
-                surfaceStationX = LIFT_X;
+                liftPickupRawYs.clear();
+                liftPickupRawYs.addAll(pickupRows);
+                surfaceStationX = SURFACE_PICKUP_X;
             }
         }
 
         int liftedGems = leafLift.update(deltaSeconds);
         if (liftedGems > 0) {
             surfaceGems += liftedGems;
+            lastLiftDropoffGems = liftedGems;
+            liftDropoffTimer = 0.9;
+            liftPickupRawYs.clear();
         }
 
         if (surfaceGems > 0 && !nestRunner.isBusy()) {
@@ -658,94 +693,335 @@ public class GamePanel extends JPanel {
         g.setStroke(new BasicStroke(1));
 
         drawTransportPanelCard(g, 176, 112, "Surface", surfaceGems, true, selection == Selection.LEAF_LIFT);
+        drawLiftDropoffEffect(g);
         drawHomeTower(g);
     }
 
     private void drawLiftTower(Graphics2D g) {
-        Image liftArt = LIFT_EMPTY_ART;
+        if (selection == Selection.LEAF_LIFT) {
+            g.setColor(new Color(255, 231, 100, 92));
+            g.fillRoundRect(47, 116, 90, MINE_VIEW_BOTTOM - 126, 18, 18);
+        }
 
-        if (liftArt != null) {
-            int x = 9;
-            int y = 92;
-            int w = 168;
-            int h = 414;
+        int x = 55;
+        int y = 128;
+        int w = 74;
+        int h = MINE_VIEW_BOTTOM - y - 10;
+        boolean usingTowerArt = drawLiftTopStorage(g, x - 13, y - 46, w + 26, 74);
+        if (usingTowerArt) {
+            drawLiftSurfaceConnector(g);
+        } else {
+            drawLiftSurfaceHead(g, x, y, w);
+        }
+        drawScrollableLiftShaft(g, x, y, w);
+        drawMovingLiftCabin(g, x, y, w, h);
+        drawLiftPickupGemFlow(g, x, y, w, h);
+        drawLiftStatusText(g, LIFT_X, leafLift.getDrawY());
+    }
 
-            if (selection == Selection.LEAF_LIFT) {
-                g.setColor(new Color(255, 231, 100, 100));
-                g.fillRoundRect(x + 8, y + 4, w - 16, h - 8, 18, 18);
+    private boolean drawLiftTopStorage(Graphics2D g, int x, int y, int w, int h) {
+        Image towerArt = getLiftTowerStorageArt();
+        if (towerArt != null) {
+            int artW = 160;
+            int artH = 188;
+            int artX = -2;
+            int artY = 67;
+            g.setColor(new Color(0, 0, 0, 85));
+            g.fillOval(artX + 18, artY + artH - 11, artW - 34, 13);
+            g.drawImage(towerArt, artX, artY, artW, artH, null);
+            return true;
+        }
+
+        int centerX = x + w / 2;
+
+        g.setColor(new Color(0, 0, 0, 80));
+        g.fillOval(x + 3, y + h - 6, w - 6, 10);
+
+        drawStoragePipe(g, x - 34, y + 33, 46, 16);
+
+        GradientPaint roof = new GradientPaint(x + 16, y, new Color(238, 151, 54), x + 16, y + 22, new Color(137, 72, 31));
+        g.setPaint(roof);
+        g.fillPolygon(
+                new int[]{x + 8, centerX, x + w - 8},
+                new int[]{y + 26, y + 2, y + 26},
+                3
+        );
+        g.setColor(new Color(97, 48, 27));
+        for (int tile = x + 24; tile < x + w - 10; tile += 15) {
+            g.drawLine(tile, y + 10, tile - 8, y + 26);
+        }
+
+        GradientPaint wall = new GradientPaint(x + 16, y + 24, new Color(73, 72, 68), x + w - 16, y + h - 4, new Color(31, 33, 35));
+        g.setPaint(wall);
+        g.fillRoundRect(x + 15, y + 24, w - 30, h - 18, 8, 8);
+        g.setColor(new Color(28, 24, 22, 210));
+        g.fillRoundRect(centerX - 18, y + 33, 36, h - 32, 8, 8);
+
+        g.setColor(new Color(115, 75, 43));
+        g.fillRoundRect(x + 10, y + 28, 14, h - 28, 6, 6);
+        g.fillRoundRect(x + w - 24, y + 28, 14, h - 28, 6, 6);
+        g.setColor(new Color(204, 126, 51));
+        g.drawLine(x + 15, y + 31, x + 15, y + h - 5);
+        g.drawLine(x + w - 19, y + 31, x + w - 19, y + h - 5);
+
+        g.setColor(new Color(56, 60, 62));
+        g.fillRoundRect(x + 7, y + h - 21, w - 14, 16, 7, 7);
+        g.setColor(new Color(218, 154, 56));
+        g.drawLine(x + 13, y + h - 18, x + w - 13, y + h - 18);
+
+        int trayX = x + 27;
+        int trayY = y + h - 38;
+        int trayW = w - 43;
+        int trayH = 27;
+        GradientPaint tray = new GradientPaint(trayX, trayY, new Color(205, 126, 51), trayX, trayY + trayH, new Color(91, 50, 26));
+        g.setPaint(tray);
+        g.fillPolygon(
+                new int[]{trayX, trayX + trayW, trayX + trayW - 7, trayX + 7},
+                new int[]{trayY + 7, trayY + 7, trayY + trayH, trayY + trayH},
+                4
+        );
+        g.setColor(new Color(50, 39, 32));
+        g.drawPolygon(
+                new int[]{trayX, trayX + trayW, trayX + trayW - 7, trayX + 7},
+                new int[]{trayY + 7, trayY + 7, trayY + trayH, trayY + trayH},
+                4
+        );
+        g.setColor(new Color(237, 163, 70));
+        g.drawLine(trayX + 5, trayY + 10, trayX + trayW - 6, trayY + 10);
+
+        drawStorageGemState(g, trayX + 5, trayY - 8, trayW - 10, trayH + 8);
+
+        if (surfaceGems > Math.max(22, nestRunner.getCapacity())) {
+            for (int i = 0; i < 4; i++) {
+                double phase = (worldTime * 0.9 + i * 0.21) % 1.0;
+                int gemX = centerX - 11 + i * 7;
+                int gemY = (int) (y + 34 + phase * (h - 34));
+                drawGem(g, gemX, gemY, 7, new Color(85, 190, 255));
             }
+        }
+        return false;
+    }
 
-            g.drawImage(liftArt, x, y, w, h, null);
-            coverStaticLiftCabin(g, x, y, w, h);
-            drawMovingLiftCabin(g, x, y, w, h);
-            drawLiftPickupGemFlow(g, x, y, w, h);
-            drawLiftStatusText(g, x + 84, leafLift.getDrawY());
+    private Image getLiftTowerStorageArt() {
+        int state = getStorageGemState();
+        if (state == 0) {
+            return LIFT_TOWER_EMPTY_ART;
+        }
+        if (state == 1) {
+            return LIFT_TOWER_SINGLE_ART;
+        }
+        if (state == 2) {
+            return LIFT_TOWER_FEW_ART;
+        }
+        if (state == 3) {
+            return LIFT_TOWER_MEDIUM_ART;
+        }
+        if (state == 4) {
+            return LIFT_TOWER_MANY_ART;
+        }
+        return LIFT_TOWER_FULL_ART;
+    }
 
+    private void drawLiftSurfaceConnector(Graphics2D g) {
+        int top = 236;
+        g.setColor(new Color(18, 15, 12, 184));
+        g.fillRoundRect(LIFT_X - 21, top, 42, MINE_VIEW_TOP - top + 5, 12, 12);
+        drawLiftChains(g, top - 14, MINE_VIEW_TOP + 4, 128);
+        drawLiftBeam(g, 49, MINE_VIEW_TOP - 17, 86, 18);
+    }
+
+    private void drawStoragePipe(Graphics2D g, int x, int y, int w, int h) {
+        GradientPaint pipe = new GradientPaint(x, y, new Color(147, 159, 163), x, y + h, new Color(57, 68, 75));
+        g.setPaint(pipe);
+        g.fillRoundRect(x, y, w, h, 8, 8);
+        g.setColor(new Color(33, 40, 46));
+        g.drawRoundRect(x, y, w, h, 8, 8);
+        g.setColor(new Color(210, 219, 220, 150));
+        g.drawLine(x + 5, y + 3, x + w - 5, y + 3);
+
+        g.setColor(new Color(83, 88, 90));
+        g.fillRoundRect(x + w - 9, y - 4, 13, h + 8, 6, 6);
+        g.setColor(new Color(214, 121, 44));
+        g.fillRect(x + w - 12, y + 2, 4, h - 4);
+    }
+
+    private void drawStorageGemState(Graphics2D g, int x, int y, int w, int h) {
+        int state = getStorageGemState();
+        if (state == 0) {
+            g.setColor(new Color(16, 19, 23, 120));
+            g.fillOval(x + 8, y + h - 12, w - 16, 8);
             return;
         }
 
-        if (selection == Selection.LEAF_LIFT) {
-            g.setColor(new Color(255, 231, 100, 120));
-            g.fillRoundRect(18, 82, 150, 166, 18, 18);
+        int count;
+        if (state == 1) {
+            count = 1;
+        } else if (state == 2) {
+            count = 4;
+        } else if (state == 3) {
+            count = 9;
+        } else {
+            count = 15;
         }
 
-        g.setColor(new Color(85, 54, 33));
-        g.fillRoundRect(34, 118, 22, 126, 9, 9);
-        g.fillRoundRect(130, 118, 22, 126, 9, 9);
-        g.setColor(new Color(137, 86, 43));
-        g.fillRoundRect(44, 132, 98, 82, 12, 12);
-        g.setColor(new Color(49, 31, 26));
-        g.fillRoundRect(55, 145, 76, 58, 10, 10);
-        g.setColor(new Color(222, 161, 64));
-        g.fillPolygon(new int[]{22, 92, 162}, new int[]{121, 82, 121}, 3);
-        g.setColor(new Color(255, 218, 116));
-        g.drawLine(34, 121, 150, 121);
-        g.setFont(new Font("Arial", Font.BOLD, 15));
-        g.setColor(Color.WHITE);
-        drawCentered(g, "Lift Birds", 92, 234);
+        for (int i = 0; i < count; i++) {
+            int row = i / 5;
+            int col = i % 5;
+            int gemX = x + 6 + col * Math.max(7, w / 6) - row * 3;
+            int gemY = y + h - 14 - row * 7 + (col % 2) * 2;
+            int size = state >= 3 ? 9 : 8;
+            drawCrystal(g, gemX, gemY, size, new Color(85, 190, 255));
+        }
     }
 
-    private void coverStaticLiftCabin(Graphics2D g, int liftX, int liftY, int liftW, int liftH) {
-        int shaftX = liftX + 44;
-        int shaftY = liftY + 118;
-        int shaftW = 80;
-        int shaftH = 146;
-
-        g.setColor(new Color(18, 15, 12, 238));
-        g.fillRoundRect(shaftX, shaftY, shaftW, shaftH, 12, 12);
-        g.setColor(new Color(45, 39, 31, 155));
-        for (int i = 0; i < 5; i++) {
-            g.fillOval(shaftX + 6 + i * 14, shaftY + 10 + (i % 2) * 17, 20, 16);
-            g.fillOval(shaftX + 2 + i * 13, shaftY + 76 + (i % 3) * 12, 18, 14);
+    private int getStorageGemState() {
+        if (surfaceGems <= 0) {
+            return 0;
         }
 
-        g.setColor(new Color(72, 76, 75));
-        g.setStroke(new BasicStroke(3));
-        g.drawLine(shaftX + 20, liftY + 72, shaftX + 20, liftY + liftH - 34);
-        g.drawLine(shaftX + shaftW - 21, liftY + 72, shaftX + shaftW - 21, liftY + liftH - 34);
-        g.setColor(new Color(171, 177, 170));
+        int capacity = Math.max(1, nestRunner.getCapacity());
+        if (surfaceGems < Math.max(4, capacity / 5)) {
+            return 1;
+        }
+        if (surfaceGems < Math.max(10, capacity / 2)) {
+            return 2;
+        }
+        if (surfaceGems < capacity) {
+            return 3;
+        }
+        if (surfaceGems < capacity * 2) {
+            return 4;
+        }
+        return 5;
+    }
+
+    private void drawLiftSurfaceHead(Graphics2D g, int x, int y, int w) {
+        drawLiftBeam(g, x - 8, y, w + 16, 22);
+        drawLiftBeam(g, x - 5, y + 56, w + 10, 20);
+
+        int postW = 9;
+        GradientPaint leftPost = new GradientPaint(x, y, new Color(190, 112, 45), x + postW, y, new Color(105, 58, 29));
+        g.setPaint(leftPost);
+        g.fillRoundRect(x, y + 18, postW, 145, 7, 7);
+        GradientPaint rightPost = new GradientPaint(x + w - postW, y, new Color(202, 123, 49), x + w, y, new Color(115, 64, 30));
+        g.setPaint(rightPost);
+        g.fillRoundRect(x + w - postW, y + 18, postW, 145, 7, 7);
+
+        g.setColor(new Color(18, 15, 12, 170));
+        g.fillRoundRect(LIFT_X - 21, y + 76, 42, MINE_VIEW_TOP - y - 72, 12, 12);
+        drawLiftChains(g, y + 34, MINE_VIEW_TOP + 4, 130);
+    }
+
+    private void drawScrollableLiftShaft(Graphics2D g, int x, int y, int w) {
+        Shape oldClip = g.getClip();
+        g.setClip(0, MINE_VIEW_TOP, MINE_VIEW_RIGHT, MINE_VIEW_BOTTOM - MINE_VIEW_TOP);
+
+        int shaftRawTop = FIRST_MINE_FLOOR_Y - 92;
+        int shaftRawBottom = FIRST_MINE_FLOOR_Y + (mines.size() - 1) * MINE_ROW_GAP + 104;
+        int shaftY = screenY(shaftRawTop);
+        int shaftBottom = screenY(shaftRawBottom);
+        int shaftH = Math.max(160, shaftBottom - shaftY);
+        int shaftX = LIFT_X - 23;
+        int shaftW = 46;
+
+        g.setColor(new Color(18, 15, 12, 226));
+        g.fillRoundRect(shaftX, shaftY, shaftW, shaftH, 16, 16);
+        g.setColor(new Color(46, 36, 28, 125));
+        for (int i = 0; i < 24; i++) {
+            int rockX = shaftX + 5 + (i * 17) % Math.max(1, shaftW - 18);
+            int rockY = shaftY + 8 + (i * 41) % Math.max(1, shaftH - 26);
+            g.fillOval(rockX, rockY, 18, 14);
+        }
+
+        int postW = 9;
+        GradientPaint leftPost = new GradientPaint(x, shaftY, new Color(190, 112, 45), x + postW, shaftY, new Color(105, 58, 29));
+        g.setPaint(leftPost);
+        g.fillRoundRect(x, shaftY, postW, shaftH, 7, 7);
+        GradientPaint rightPost = new GradientPaint(x + w - postW, shaftY, new Color(202, 123, 49), x + w, shaftY, new Color(115, 64, 30));
+        g.setPaint(rightPost);
+        g.fillRoundRect(x + w - postW, shaftY, postW, shaftH, 7, 7);
+
+        drawLiftChains(g, shaftY + 8, shaftY + shaftH - 8, 135);
+        drawLiftBeam(g, x - 5, shaftY + shaftH - 22, w + 10, 24);
+        g.setClip(oldClip);
+    }
+
+    private void drawLiftChains(Graphics2D g, int top, int bottom, int alpha) {
+        if (bottom <= top) {
+            return;
+        }
+
+        int leftChainX = LIFT_X - LIFT_CHAIN_OFFSET;
+        int rightChainX = LIFT_X + LIFT_CHAIN_OFFSET;
+        g.setColor(new Color(88, 86, 78, alpha));
+        g.setStroke(new BasicStroke(2));
+        g.drawLine(leftChainX, top, leftChainX, bottom);
+        g.drawLine(rightChainX, top, rightChainX, bottom);
         g.setStroke(new BasicStroke(1));
-        for (int linkY = liftY + 78; linkY < liftY + liftH - 38; linkY += 12) {
-            g.drawOval(shaftX + 16, linkY, 8, 10);
-            g.drawOval(shaftX + shaftW - 25, linkY, 8, 10);
+        g.setColor(new Color(184, 186, 176, Math.max(70, alpha - 32)));
+        int firstLinkY = top + Math.floorMod(4 - top, 18);
+        for (int linkY = firstLinkY; linkY < bottom; linkY += 18) {
+            g.drawOval(leftChainX - 4, linkY, 8, 12);
+            g.drawOval(rightChainX - 4, linkY, 8, 12);
         }
+    }
+
+    private void drawLiftBeam(Graphics2D g, int x, int y, int w, int h) {
+        GradientPaint beam = new GradientPaint(x, y, new Color(210, 130, 54), x, y + h, new Color(116, 63, 30));
+        g.setPaint(beam);
+        g.fillRoundRect(x, y, w, h, 8, 8);
+        g.setColor(new Color(75, 43, 25, 100));
+        for (int line = y + 8; line < y + h - 4; line += 9) {
+            g.drawLine(x + 10, line, x + w - 10, line - 2);
+        }
+        g.setColor(new Color(45, 43, 39));
+        g.fillOval(x + 8, y + 8, 8, 8);
+        g.fillOval(x + w - 16, y + 8, 8, 8);
     }
 
     private void drawMovingLiftCabin(Graphics2D g, int liftX, int liftY, int liftW, int liftH) {
-        Image cabinArt = leafLift.getLoad() > 0 && !leafLift.isTravelingToPickup() && LIFT_CABIN_FULL_ART != null
-                ? LIFT_CABIN_FULL_ART
-                : LIFT_CABIN_EMPTY_ART;
-        if (cabinArt == null) {
-            return;
+        int cabinW = 54;
+        int cabinH = 70;
+        int cabinX = LIFT_X - cabinW / 2;
+        int cabinY = leafLift.getDrawY() - 40;
+        cabinY = Math.max(liftY + 26, Math.min(MINE_VIEW_BOTTOM - cabinH - 2, cabinY));
+
+        g.setColor(new Color(0, 0, 0, 85));
+        g.fillOval(cabinX + 5, cabinY + cabinH - 8, cabinW - 10, 9);
+
+        g.setColor(new Color(74, 74, 70, 190));
+        g.setStroke(new BasicStroke(2));
+        g.drawLine(LIFT_X - LIFT_CHAIN_OFFSET, cabinY - 14, LIFT_X - LIFT_CHAIN_OFFSET, cabinY + 18);
+        g.drawLine(LIFT_X + LIFT_CHAIN_OFFSET, cabinY - 14, LIFT_X + LIFT_CHAIN_OFFSET, cabinY + 18);
+        g.setStroke(new BasicStroke(1));
+
+        if (LIFT_BIRD_ART != null) {
+            g.drawImage(LIFT_BIRD_ART, cabinX + 9, cabinY - 1, 36, 42, null);
+        } else {
+            g.setColor(new Color(236, 178, 55));
+            g.fillOval(cabinX + 13, cabinY + 8, 36, 32);
+            g.setColor(Color.WHITE);
+            g.fillOval(cabinX + 35, cabinY + 14, 9, 9);
+            g.setColor(Color.BLACK);
+            g.fillOval(cabinX + 39, cabinY + 17, 4, 4);
         }
 
-        int cabinW = 104;
-        int cabinH = 140;
-        int cabinX = liftX + 32;
-        int cabinY = leafLift.getDrawY() - 68;
-        cabinY = Math.max(liftY + 80, Math.min(liftY + liftH - cabinH - 18, cabinY));
+        GradientPaint chest = new GradientPaint(cabinX + 5, cabinY + 39, new Color(190, 111, 45), cabinX + 5, cabinY + 63, new Color(95, 54, 29));
+        g.setPaint(chest);
+        g.fillRoundRect(cabinX + 5, cabinY + 39, cabinW - 10, 25, 6, 6);
+        g.setColor(new Color(54, 45, 39));
+        g.drawRoundRect(cabinX + 5, cabinY + 39, cabinW - 10, 25, 6, 6);
+        g.setColor(new Color(55, 42, 31));
+        g.fillRect(cabinX + 10, cabinY + 51, cabinW - 20, 4);
 
-        g.drawImage(cabinArt, cabinX, cabinY, cabinW, cabinH, null);
+        if (leafLift.getLoad() > 0 && !leafLift.isTravelingToPickup()) {
+            for (int i = 0; i < Math.min(7, leafLift.getLoad()); i++) {
+                drawCrystal(g, cabinX + 11 + i * 5, cabinY + 32 + (i % 2) * 4, 8, new Color(85, 190, 255));
+            }
+        }
+
+        g.setColor(new Color(94, 67, 42));
+        g.fillRoundRect(cabinX + 2, cabinY + 62, cabinW - 4, 8, 5, 5);
     }
 
     private void drawLiftPickupGemFlow(Graphics2D g, int liftX, int liftY, int liftW, int liftH) {
@@ -753,16 +1029,57 @@ public class GamePanel extends JPanel {
             return;
         }
 
-        int chestX = liftX + liftW / 2 - 5;
-        int chestY = Math.max(liftY + 150, Math.min(liftY + liftH - 120, leafLift.getDrawY() - 8));
-        int sourceX = chestX + 112;
-        int sourceY = chestY + 18;
+        int chestX = LIFT_X;
+        int chestY = Math.max(liftY + 62, Math.min(liftY + liftH - 82, leafLift.getDrawY() - 4));
+        if (liftPickupRawYs.isEmpty()) {
+            for (int i = 0; i < 5; i++) {
+                double phase = (worldTime * 1.7 + i * 0.18) % 1.0;
+                int gemX = (int) ((LIFT_X + 66) + (chestX - (LIFT_X + 66)) * phase);
+                int gemY = (int) ((chestY + 18) + Math.sin(phase * Math.PI) * -16);
+                drawGem(g, gemX, gemY, 11, new Color(85, 190, 255));
+            }
+            return;
+        }
 
-        for (int i = 0; i < 5; i++) {
-            double phase = (worldTime * 1.7 + i * 0.18) % 1.0;
-            int gemX = (int) (sourceX + (chestX - sourceX) * phase);
-            int gemY = (int) (sourceY + (chestY - sourceY) * phase + Math.sin(phase * Math.PI) * -16);
-            drawGem(g, gemX, gemY, 12, new Color(85, 190, 255));
+        int visibleSources = Math.min(4, liftPickupRawYs.size());
+        for (int source = 0; source < visibleSources; source++) {
+            int sourceY = screenY(liftPickupRawYs.get(source));
+            if (sourceY < MINE_VIEW_TOP - 40 || sourceY > MINE_VIEW_BOTTOM + 40) {
+                continue;
+            }
+
+            int sourceX = LIFT_X + 68;
+            for (int i = 0; i < 2; i++) {
+                double phase = (worldTime * 1.55 + source * 0.21 + i * 0.16) % 1.0;
+                int gemX = (int) (sourceX + (chestX - sourceX) * phase);
+                int gemY = (int) (sourceY + (chestY - sourceY) * phase + Math.sin(phase * Math.PI) * -14);
+                drawGem(g, gemX, gemY, 10, new Color(85, 190, 255));
+            }
+        }
+    }
+
+    private void drawLiftDropoffEffect(Graphics2D g) {
+        if (liftDropoffTimer <= 0) {
+            return;
+        }
+
+        double progress = 1.0 - liftDropoffTimer / 0.9;
+        int startX = LIFT_X + 14;
+        int startY = 154;
+        int endX = SURFACE_PICKUP_X;
+        int endY = 174;
+
+        for (int i = 0; i < 7; i++) {
+            double local = Math.min(1.0, Math.max(0, progress + i * 0.045));
+            int gemX = (int) (startX + (endX - startX) * local);
+            int gemY = (int) (startY + (endY - startY) * local - Math.sin(local * Math.PI) * 22);
+            drawGem(g, gemX, gemY, 11, new Color(85, 190, 255));
+        }
+
+        if (progress < 0.72) {
+            g.setFont(new Font("Arial", Font.BOLD, 12));
+            g.setColor(Color.WHITE);
+            g.drawString("drop +" + lastLiftDropoffGems, LIFT_X + 28, 144);
         }
     }
 
@@ -772,11 +1089,11 @@ public class GamePanel extends JPanel {
             return;
         }
 
-        int bubbleY = Math.max(96, Math.min(398, actorY - 32));
+        int bubbleY = Math.max(96, Math.min(MINE_VIEW_BOTTOM - 42, actorY - 72));
         g.setColor(new Color(9, 17, 20, 220));
-        g.fillRoundRect(centerX - 38, bubbleY, 76, 22, 11, 11);
+        g.fillRoundRect(centerX - 42, bubbleY, 84, 22, 11, 11);
         g.setColor(new Color(238, 226, 136));
-        g.drawRoundRect(centerX - 38, bubbleY, 76, 22, 11, 11);
+        g.drawRoundRect(centerX - 42, bubbleY, 84, 22, 11, 11);
         g.setFont(new Font("Arial", Font.BOLD, 10));
         g.setColor(Color.WHITE);
         drawCentered(g, status, centerX, bubbleY + 15);
@@ -1121,7 +1438,7 @@ public class GamePanel extends JPanel {
     }
 
     private boolean leafLiftPanelContains(int mouseX, int mouseY) {
-        return mouseX >= 9 && mouseX <= 177 && mouseY >= 68 && mouseY <= 482;
+        return mouseX >= 45 && mouseX <= 139 && mouseY >= 118 && mouseY <= MINE_VIEW_BOTTOM;
     }
 
     private boolean runnerPanelContains(int mouseX, int mouseY) {
