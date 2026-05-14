@@ -90,12 +90,21 @@ public class GamePanel extends JPanel {
     private double mineScrollY;
     private long lastUpdateTime;
     private final List<Integer> liftPickupRawYs = new ArrayList<>();
+    private final List<FloatingText> floatingTexts = new ArrayList<>();
+    private final List<Sparkle> sparkles = new ArrayList<>();
+    private double celebrationTimer;
+    private String celebrationTitle = "";
+    private String celebrationSubtitle = "";
+    private Color celebrationColor = new Color(105, 230, 120);
 
     private final Button optionOne = new Button();
     private final Button optionTwo = new Button();
     private final Button optionThree = new Button();
     private final Button optionFour = new Button();
     private final Button optionFive = new Button();
+    private final Button tabMine = new Button();
+    private final Button tabLift = new Button();
+    private final Button tabRunner = new Button();
     private final Button closePopup = new Button();
 
     public GamePanel() {
@@ -143,9 +152,17 @@ public class GamePanel extends JPanel {
         lastUpdateTime = now;
         worldTime += deltaSeconds;
         liftDropoffTimer = Math.max(0, liftDropoffTimer - deltaSeconds);
+        celebrationTimer = Math.max(0, celebrationTimer - deltaSeconds);
+        updateVisualEffects(deltaSeconds);
 
         for (Mine mine : mines) {
-            mine.update(deltaSeconds);
+            int producedGems = mine.update(deltaSeconds);
+            if (producedGems > 0) {
+                int effectX = mine.getBasketCenterX();
+                int effectY = screenY(mine.getFloorY()) - 74;
+                addFloatingText("+" + producedGems, effectX, effectY, mine.getPrimaryGemColor(), 1.05);
+                addSparkleBurst(effectX + 12, effectY + 10, mine.getPrimaryGemColor(), 5);
+            }
         }
 
         if (!leafLift.isBusy()) {
@@ -184,6 +201,8 @@ public class GamePanel extends JPanel {
             lastLiftDropoffGems = liftedGems;
             liftDropoffTimer = 0.9;
             liftPickupRawYs.clear();
+            addFloatingText("+" + liftedGems + " surface", SURFACE_PICKUP_X - 20, SURFACE_Y + 42, new Color(96, 238, 255), 1.2);
+            addSparkleBurst(SURFACE_PICKUP_X, SURFACE_Y + 24, new Color(96, 238, 255), 8);
         }
 
         if (surfaceGems > 0 && !nestRunner.isBusy()) {
@@ -196,6 +215,8 @@ public class GamePanel extends JPanel {
         int deliveredGems = nestRunner.update(deltaSeconds);
         if (deliveredGems > 0) {
             bank.add(deliveredGems);
+            addFloatingText("+" + deliveredGems + " saved", TOWER_X + 78, SURFACE_Y + 22, new Color(255, 231, 110), 1.35);
+            addSparkleBurst(TOWER_X + 88, SURFACE_Y + 16, new Color(255, 231, 110), 10);
         }
 
         repaint();
@@ -229,14 +250,14 @@ public class GamePanel extends JPanel {
         }
 
         if (leafLiftPanelContains(mouseX, mouseY)) {
-            mineUpgradePopupOpen = false;
             selection = Selection.LEAF_LIFT;
+            mineUpgradePopupOpen = true;
             return;
         }
 
         if (runnerPanelContains(mouseX, mouseY)) {
-            mineUpgradePopupOpen = false;
             selection = Selection.NEST_RUNNER;
+            mineUpgradePopupOpen = true;
             return;
         }
 
@@ -261,13 +282,28 @@ public class GamePanel extends JPanel {
     }
 
     private boolean handleUpgradeClick(int mouseX, int mouseY) {
-        if (selection == Selection.MINE) {
-            if (!mineUpgradePopupOpen) {
-                return false;
-            }
+        if (mineUpgradePopupOpen) {
             if (closePopup.contains(mouseX, mouseY)) {
                 mineUpgradePopupOpen = false;
                 return true;
+            }
+            if (tabMine.contains(mouseX, mouseY)) {
+                selection = Selection.MINE;
+                return true;
+            }
+            if (tabLift.contains(mouseX, mouseY)) {
+                selection = Selection.LEAF_LIFT;
+                return true;
+            }
+            if (tabRunner.contains(mouseX, mouseY)) {
+                selection = Selection.NEST_RUNNER;
+                return true;
+            }
+        }
+
+        if (selection == Selection.MINE) {
+            if (!mineUpgradePopupOpen) {
+                return false;
             }
             if (optionOne.contains(mouseX, mouseY)) {
                 buySelectedBirdSpeed();
@@ -354,8 +390,10 @@ public class GamePanel extends JPanel {
         Mine mine = getSelectedMine();
         Bird bird = getSelectedBird();
         int cost = bird.getSpeedCost(mine.getId());
+        boolean wasReady = mine.canUnlockGreenBird();
         if (bird.canUpgradeSpeed() && bank.spend(cost)) {
             bird.upgradeSpeed();
+            showUpgradeFeedback("Speed Up", mine, bird.getGemColor(), wasReady);
         }
     }
 
@@ -363,8 +401,10 @@ public class GamePanel extends JPanel {
         Mine mine = getSelectedMine();
         Bird bird = getSelectedBird();
         int cost = bird.getStrengthCost(mine.getId());
+        boolean wasReady = mine.canUnlockGreenBird();
         if (bird.canUpgradeStrength() && bank.spend(cost)) {
             bird.upgradeStrength();
+            showUpgradeFeedback("Capacity Up", mine, bird.getGemColor(), wasReady);
         }
     }
 
@@ -372,8 +412,10 @@ public class GamePanel extends JPanel {
         Mine mine = getSelectedMine();
         Bird bird = getSelectedBird();
         int cost = bird.getMiningCost(mine.getId());
+        boolean wasReady = mine.canUnlockGreenBird();
         if (bird.canUpgradeMining() && bank.spend(cost)) {
             bird.upgradeMining();
+            showUpgradeFeedback("Mining Up", mine, bird.getGemColor(), wasReady);
         }
     }
 
@@ -397,6 +439,19 @@ public class GamePanel extends JPanel {
         if (mine.canUnlockGreenBird() && bank.spend(cost)) {
             mine.unlockGreenBird();
             selectedGreenBird = true;
+            startCelebration("Green Bird Joined!", "Mine " + mine.getId() + " now has a stronger miner.", new Color(105, 230, 120));
+            int floorY = screenY(mine.getFloorY());
+            addSparkleBurst(mine.getBasketCenterX() + 120, floorY - 76, new Color(105, 230, 120), 24);
+        }
+    }
+
+    private void showUpgradeFeedback(String label, Mine mine, Color color, boolean wasGreenReady) {
+        int floorY = screenY(mine.getFloorY());
+        addFloatingText(label, mine.getBasketCenterX() + 125, Math.max(MINE_VIEW_TOP + 30, floorY - 96), color, 1.25);
+        addSparkleBurst(mine.getBasketCenterX() + 148, Math.max(MINE_VIEW_TOP + 40, floorY - 74), color, 8);
+        if (!wasGreenReady && mine.canUnlockGreenBird()) {
+            startCelebration("Green Bird Ready!", "Blue Bird reached level 15 in Mine " + mine.getId() + ".", new Color(105, 230, 120));
+            addSparkleBurst(mine.getBasketCenterX() + 140, floorY - 80, new Color(105, 230, 120), 28);
         }
     }
 
@@ -404,6 +459,8 @@ public class GamePanel extends JPanel {
         int cost = leafLift.getMoveCost();
         if (leafLift.canUpgradeMove() && bank.spend(cost)) {
             leafLift.upgradeMoveSpeed();
+            addFloatingText("Lift speed up", LIFT_X + 44, 244, new Color(255, 199, 75), 1.2);
+            addSparkleBurst(LIFT_X + 24, 246, new Color(255, 199, 75), 8);
         }
     }
 
@@ -411,6 +468,8 @@ public class GamePanel extends JPanel {
         int cost = leafLift.getPickupCost();
         if (leafLift.canUpgradePickup() && bank.spend(cost)) {
             leafLift.upgradePickupSpeed();
+            addFloatingText("Lift load up", LIFT_X + 44, 244, new Color(255, 199, 75), 1.2);
+            addSparkleBurst(LIFT_X + 24, 246, new Color(255, 199, 75), 8);
         }
     }
 
@@ -418,6 +477,8 @@ public class GamePanel extends JPanel {
         int cost = leafLift.getCapacityCost();
         if (leafLift.canUpgradeCapacity() && bank.spend(cost)) {
             leafLift.upgradeCapacity();
+            addFloatingText("Lift capacity up", LIFT_X + 44, 244, new Color(255, 199, 75), 1.2);
+            addSparkleBurst(LIFT_X + 24, 246, new Color(255, 199, 75), 8);
         }
     }
 
@@ -425,6 +486,8 @@ public class GamePanel extends JPanel {
         int cost = nestRunner.getMoveCost();
         if (nestRunner.canUpgradeMove() && bank.spend(cost)) {
             nestRunner.upgradeMoveSpeed();
+            addFloatingText("Runner speed up", TOWER_X + 76, SURFACE_Y + 16, new Color(220, 108, 205), 1.2);
+            addSparkleBurst(TOWER_X + 84, SURFACE_Y + 24, new Color(220, 108, 205), 8);
         }
     }
 
@@ -432,6 +495,8 @@ public class GamePanel extends JPanel {
         int cost = nestRunner.getPickupCost();
         if (nestRunner.canUpgradePickup() && bank.spend(cost)) {
             nestRunner.upgradePickupSpeed();
+            addFloatingText("Runner pickup up", TOWER_X + 76, SURFACE_Y + 16, new Color(220, 108, 205), 1.2);
+            addSparkleBurst(TOWER_X + 84, SURFACE_Y + 24, new Color(220, 108, 205), 8);
         }
     }
 
@@ -439,6 +504,8 @@ public class GamePanel extends JPanel {
         int cost = nestRunner.getCapacityCost();
         if (nestRunner.canUpgradeCapacity() && bank.spend(cost)) {
             nestRunner.upgradeCapacity();
+            addFloatingText("Runner capacity up", TOWER_X + 76, SURFACE_Y + 16, new Color(220, 108, 205), 1.2);
+            addSparkleBurst(TOWER_X + 84, SURFACE_Y + 24, new Color(220, 108, 205), 8);
         }
     }
 
@@ -523,6 +590,126 @@ public class GamePanel extends JPanel {
         return bird.canUpgradeMining() || bird.canUpgradeSpeed() || bird.canUpgradeStrength();
     }
 
+    private void updateVisualEffects(double deltaSeconds) {
+        for (int i = floatingTexts.size() - 1; i >= 0; i--) {
+            FloatingText text = floatingTexts.get(i);
+            text.age += deltaSeconds;
+            text.y -= 28 * deltaSeconds;
+            if (text.age >= text.life) {
+                floatingTexts.remove(i);
+            }
+        }
+
+        for (int i = sparkles.size() - 1; i >= 0; i--) {
+            Sparkle sparkle = sparkles.get(i);
+            sparkle.age += deltaSeconds;
+            sparkle.x += sparkle.vx * deltaSeconds;
+            sparkle.y += sparkle.vy * deltaSeconds;
+            sparkle.vy += 18 * deltaSeconds;
+            if (sparkle.age >= sparkle.life) {
+                sparkles.remove(i);
+            }
+        }
+    }
+
+    private void addFloatingText(String text, int x, int y, Color color, double life) {
+        floatingTexts.add(new FloatingText(text, x, y, color, life));
+        if (floatingTexts.size() > 36) {
+            floatingTexts.remove(0);
+        }
+    }
+
+    private void addSparkleBurst(int x, int y, Color color, int count) {
+        for (int i = 0; i < count; i++) {
+            double angle = (Math.PI * 2 * i / Math.max(1, count)) + worldTime * 0.7;
+            double speed = 18 + (i % 5) * 8;
+            sparkles.add(new Sparkle(
+                    x,
+                    y,
+                    Math.cos(angle) * speed,
+                    Math.sin(angle) * speed - 18,
+                    color,
+                    0.55 + (i % 4) * 0.08
+            ));
+        }
+        while (sparkles.size() > 140) {
+            sparkles.remove(0);
+        }
+    }
+
+    private void startCelebration(String title, String subtitle, Color color) {
+        celebrationTitle = title;
+        celebrationSubtitle = subtitle;
+        celebrationColor = color;
+        celebrationTimer = 2.6;
+    }
+
+    private void drawVisualEffects(Graphics2D g) {
+        for (Sparkle sparkle : sparkles) {
+            double progress = sparkle.age / sparkle.life;
+            int alpha = (int) (210 * (1 - progress));
+            if (alpha <= 0) {
+                continue;
+            }
+            int size = 4 + (int) (5 * (1 - progress));
+            g.setColor(new Color(sparkle.color.getRed(), sparkle.color.getGreen(), sparkle.color.getBlue(), alpha));
+            g.fillOval((int) sparkle.x - size / 2, (int) sparkle.y - size / 2, size, size);
+            g.setColor(new Color(255, 255, 255, Math.min(220, alpha + 35)));
+            g.drawLine((int) sparkle.x - size, (int) sparkle.y, (int) sparkle.x + size, (int) sparkle.y);
+            g.drawLine((int) sparkle.x, (int) sparkle.y - size, (int) sparkle.x, (int) sparkle.y + size);
+        }
+
+        g.setFont(new Font("Arial", Font.BOLD, 15));
+        for (FloatingText text : floatingTexts) {
+            double progress = text.age / text.life;
+            int alpha = (int) (255 * (1 - progress));
+            if (alpha <= 0) {
+                continue;
+            }
+            FontMetrics metrics = g.getFontMetrics();
+            int textX = (int) text.x - metrics.stringWidth(text.text) / 2;
+            int textY = (int) text.y;
+            g.setColor(new Color(0, 0, 0, Math.min(150, alpha)));
+            g.drawString(text.text, textX + 2, textY + 2);
+            g.setColor(new Color(text.color.getRed(), text.color.getGreen(), text.color.getBlue(), alpha));
+            g.drawString(text.text, textX, textY);
+        }
+    }
+
+    private void drawCelebration(Graphics2D g) {
+        if (celebrationTimer <= 0) {
+            return;
+        }
+
+        double progress = 1.0 - celebrationTimer / 2.6;
+        int alpha = progress < 0.16
+                ? (int) (220 * (progress / 0.16))
+                : (int) (220 * Math.min(1, celebrationTimer / 0.45));
+        alpha = Math.max(0, Math.min(220, alpha));
+        int bannerY = 92 + (int) (Math.sin(progress * Math.PI) * 8);
+
+        g.setColor(new Color(5, 13, 18, alpha));
+        g.fillRoundRect(350, bannerY, 420, 84, 22, 22);
+        g.setColor(new Color(celebrationColor.getRed(), celebrationColor.getGreen(), celebrationColor.getBlue(), Math.min(255, alpha + 20)));
+        g.setStroke(new BasicStroke(3));
+        g.drawRoundRect(350, bannerY, 420, 84, 22, 22);
+        g.setStroke(new BasicStroke(1));
+
+        g.setFont(new Font("Arial", Font.BOLD, 25));
+        g.setColor(new Color(255, 255, 255, Math.min(255, alpha + 35)));
+        drawCentered(g, celebrationTitle, 560, bannerY + 35);
+        g.setFont(new Font("Arial", Font.BOLD, 14));
+        g.setColor(new Color(222, 244, 226, alpha));
+        drawCentered(g, celebrationSubtitle, 560, bannerY + 61);
+
+        for (int i = 0; i < 18; i++) {
+            double angle = worldTime * 2 + i * 0.65;
+            int sx = 560 + (int) (Math.cos(angle) * (180 + (i % 4) * 8));
+            int sy = bannerY + 42 + (int) (Math.sin(angle * 1.3) * 38);
+            drawCrystal(g, sx, sy, 8, i % 2 == 0 ? celebrationColor : new Color(85, 190, 255));
+        }
+    }
+
     @Override
     protected void paintComponent(Graphics graphics) {
         super.paintComponent(graphics);
@@ -534,6 +721,8 @@ public class GamePanel extends JPanel {
         drawSurfaceAndTower(g);
         drawMineViewport(g);
         drawTransportActors(g);
+        drawVisualEffects(g);
+        drawCelebration(g);
         if (mineUpgradePopupOpen) {
             drawMineUpgradePopup(g);
         } else {
@@ -1244,6 +1433,7 @@ public class GamePanel extends JPanel {
 
             drawLiftConnector(g, LIFT_X + 39, floorY - 26, artX + 42);
             g.drawImage(MINE_ROW_ART, artX, artY, artW, artH, null);
+            drawMineLevelDecorations(g, mine, artX, artY, artW, artH, floorY);
 
             if (mine.getStationGems() > 0) {
                 drawGemPile(g, mine.getBasketX() - 8, floorY - 68, Math.min(10, mine.getStationGems()), mine.getPrimaryGemColor());
@@ -1261,6 +1451,7 @@ public class GamePanel extends JPanel {
             drawBlueCrystalWall(g, mine.getGemWallX() - 20, caveY + 23, mine.hasGreenBird());
             drawTrack(g, mine.getBasketX() + 37, floorY - 10, mine.getGemWallX() + 18);
             drawConnectedStorage(g, mine.getBasketX() - 8, floorY - 62, mine.getStationGems(), mine.getPrimaryGemColor());
+            drawMineLevelDecorations(g, mine, caveX - 8, caveY + 9, mine.getCaveWidth() + 34, 56, floorY);
         }
 
         int labelX = 190;
@@ -1283,6 +1474,54 @@ public class GamePanel extends JPanel {
         } else if (mine.getBlueBird().isLevelFifteen()) {
             g.setColor(new Color(112, 240, 126));
             g.drawString("Ready", labelX + 76, labelY + 14);
+        }
+    }
+
+    private void drawMineLevelDecorations(Graphics2D g, Mine mine, int x, int y, int w, int h, int floorY) {
+        int tier = mine.getVisualTier();
+        if (tier <= 0) {
+            return;
+        }
+
+        if (tier >= 1) {
+            int lampX = x + w - 144;
+            int lampY = y + 25;
+            g.setColor(new Color(255, 198, 76, 130));
+            g.fillOval(lampX - 15, lampY - 10, 42, 32);
+            g.setColor(new Color(116, 70, 32));
+            g.fillRoundRect(lampX, lampY - 18, 8, 20, 5, 5);
+            g.setColor(new Color(255, 211, 88));
+            g.fillOval(lampX - 4, lampY - 2, 16, 18);
+            g.setColor(new Color(72, 50, 35));
+            g.drawOval(lampX - 4, lampY - 2, 16, 18);
+        }
+
+        if (tier >= 2) {
+            g.setColor(new Color(225, 154, 65, 190));
+            g.setStroke(new BasicStroke(3));
+            g.drawLine(x + 44, y + 10, x + 78, y + h - 10);
+            g.drawLine(x + w - 64, y + 11, x + w - 98, y + h - 10);
+            g.setStroke(new BasicStroke(1));
+            g.setColor(new Color(55, 35, 25, 150));
+            g.fillRoundRect(x + 38, floorY - 13, w - 72, 5, 4, 4);
+        }
+
+        if (tier >= 3) {
+            for (int i = 0; i < 4; i++) {
+                int gemX = x + 110 + i * 36;
+                int gemY = y + 17 + (i % 2) * 9;
+                drawCrystal(g, gemX, gemY, 11, mine.getPrimaryGemColor());
+            }
+            g.setColor(new Color(96, 238, 255, 60));
+            g.fillRoundRect(x + 82, y + 18, w - 150, h - 26, 16, 16);
+        }
+
+        if (tier >= 4) {
+            g.setColor(new Color(105, 230, 120, 170));
+            g.fillRoundRect(x + w - 72, y + 12, 44, 18, 8, 8);
+            g.setColor(Color.WHITE);
+            g.setFont(new Font("Arial", Font.BOLD, 11));
+            drawCentered(g, "BOOST", x + w - 50, y + 25);
         }
     }
 
@@ -1480,6 +1719,20 @@ public class GamePanel extends JPanel {
         g.fillRect(0, 0, WIDTH, HEIGHT);
 
         drawDarkGoldPanel(g, x, y, w, h, 18);
+        drawUpgradeTabs(g, x + 28, y + 63);
+
+        closePopup.setBounds(x + w - 45, y + 18, 28, 28);
+        drawCloseButton(g, closePopup);
+
+        if (selection == Selection.LEAF_LIFT) {
+            drawCourierUpgradePopup(g, "Strong Lift Bird", "Moves gems from mines to the surface.", leafLift, x, y, new Color(255, 199, 75));
+            return;
+        }
+
+        if (selection == Selection.NEST_RUNNER) {
+            drawCourierUpgradePopup(g, "Swift Nest Bird", "Carries surface gems back to the home nest.", nestRunner, x, y, new Color(220, 108, 205));
+            return;
+        }
 
         g.setFont(new Font("Arial", Font.BOLD, 25));
         g.setColor(Color.WHITE);
@@ -1487,13 +1740,10 @@ public class GamePanel extends JPanel {
 
         g.setFont(new Font("Arial", Font.PLAIN, 14));
         g.setColor(new Color(222, 236, 255));
-        g.drawString(bird.getName() + " level " + bird.getProgressLevel() + "/15", x + 30, y + 68);
-        g.drawString(mine.getStationGems() + " gems waiting at this mine", x + 30, y + 90);
+        g.drawString(bird.getName() + " level " + bird.getProgressLevel() + "/15", x + 30, y + 116);
+        g.drawString(mine.getStationGems() + " gems waiting at this mine", x + 30, y + 138);
 
-        closePopup.setBounds(x + w - 45, y + 18, 28, 28);
-        drawCloseButton(g, closePopup);
-
-        drawBirdSwitchRow(g, mine, bird, x + 386, y + 32);
+        drawBirdSwitchRow(g, mine, bird, x + 386, y + 98);
 
         drawUpgradeCard(
                 g,
@@ -1544,6 +1794,79 @@ public class GamePanel extends JPanel {
                 greenText,
                 mine.hasGreenBird() || (mine.canUnlockGreenBird() && bank.canAfford(mine.getGreenBirdCost()))
         );
+    }
+
+    private void drawUpgradeTabs(Graphics2D g, int x, int y) {
+        drawPopupTab(g, tabMine, "Mine Birds", selection == Selection.MINE);
+        drawPopupTab(g, tabLift, "Lift Bird", selection == Selection.LEAF_LIFT);
+        drawPopupTab(g, tabRunner, "Nest Runner", selection == Selection.NEST_RUNNER);
+    }
+
+    private void drawPopupTab(Graphics2D g, Button button, String label, boolean active) {
+        g.setColor(active ? new Color(33, 111, 158, 245) : new Color(19, 31, 43, 225));
+        g.fillRoundRect(button.x, button.y, button.width, button.height, 12, 12);
+        g.setColor(active ? new Color(125, 224, 255) : new Color(108, 126, 145));
+        g.drawRoundRect(button.x, button.y, button.width, button.height, 12, 12);
+        g.setFont(new Font("Arial", Font.BOLD, 13));
+        g.setColor(Color.WHITE);
+        drawCentered(g, label, button.x + button.width / 2, button.y + 23);
+    }
+
+    private void drawCourierUpgradePopup(Graphics2D g, String title, String description, Courier courier, int x, int y, Color accent) {
+        g.setFont(new Font("Arial", Font.BOLD, 25));
+        g.setColor(Color.WHITE);
+        g.drawString(title, x + 28, y + 43);
+        g.setFont(new Font("Arial", Font.PLAIN, 14));
+        g.setColor(new Color(222, 236, 255));
+        g.drawString(description, x + 30, y + 116);
+
+        drawCourierStatBadge(g, x + 30, y + 141, "Capacity", courier.getCapacity() + " gems", accent);
+        drawCourierStatBadge(g, x + 232, y + 141, "Move", "Lv. " + courier.getMoveLevel() + "/" + courier.getMaxStatLevel(), accent);
+        drawCourierStatBadge(g, x + 434, y + 141, "Pickup", "Lv. " + courier.getPickupLevel() + "/" + courier.getMaxStatLevel(), accent);
+
+        drawUpgradeCard(
+                g,
+                optionOne,
+                "Move Speed",
+                "Travels quicker",
+                "Lv. " + courier.getMoveLevel() + "/" + courier.getMaxStatLevel(),
+                courier.canUpgradeMove() ? courier.getMoveCost() + " gems" : "max",
+                "feather",
+                courier.canUpgradeMove() && bank.canAfford(courier.getMoveCost())
+        );
+        drawUpgradeCard(
+                g,
+                optionTwo,
+                "Pickup Speed",
+                "Loads faster",
+                "Lv. " + courier.getPickupLevel() + "/" + courier.getMaxStatLevel(),
+                courier.canUpgradePickup() ? courier.getPickupCost() + " gems" : "max",
+                "clock",
+                courier.canUpgradePickup() && bank.canAfford(courier.getPickupCost())
+        );
+        drawUpgradeCard(
+                g,
+                optionThree,
+                "Capacity",
+                "Carries more",
+                "Lv. " + courier.getCapacityLevel() + "/" + courier.getMaxStatLevel(),
+                courier.canUpgradeCapacity() ? courier.getCapacityCost() + " gems" : "max",
+                "box",
+                courier.canUpgradeCapacity() && bank.canAfford(courier.getCapacityCost())
+        );
+    }
+
+    private void drawCourierStatBadge(Graphics2D g, int x, int y, String label, String value, Color accent) {
+        g.setColor(new Color(15, 27, 38, 218));
+        g.fillRoundRect(x, y, 176, 54, 13, 13);
+        g.setColor(new Color(accent.getRed(), accent.getGreen(), accent.getBlue(), 190));
+        g.drawRoundRect(x, y, 176, 54, 13, 13);
+        g.setFont(new Font("Arial", Font.PLAIN, 12));
+        g.setColor(new Color(215, 232, 242));
+        g.drawString(label, x + 14, y + 20);
+        g.setFont(new Font("Arial", Font.BOLD, 17));
+        g.setColor(Color.WHITE);
+        g.drawString(value, x + 14, y + 42);
     }
 
     private void drawBirdSwitchRow(Graphics2D g, Mine mine, Bird bird, int x, int y) {
@@ -1775,22 +2098,39 @@ public class GamePanel extends JPanel {
     private void positionContextButtons() {
         int x = 755;
         int y = 360;
-        if (selection == Selection.MINE) {
-            if (mineUpgradePopupOpen) {
+        if (mineUpgradePopupOpen) {
+            tabMine.setBounds(258, 178, 118, 34);
+            tabLift.setBounds(386, 178, 118, 34);
+            tabRunner.setBounds(514, 178, 132, 34);
+            closePopup.setBounds(845, 136, 28, 28);
+
+            if (selection == Selection.MINE) {
                 optionOne.setBounds(260, 260, 188, 178);
                 optionTwo.setBounds(466, 260, 188, 178);
                 optionThree.setBounds(672, 260, 188, 178);
                 optionFour.setBounds(260, 468, 286, 64);
                 optionFive.setBounds(574, 468, 286, 64);
-                closePopup.setBounds(845, 136, 28, 28);
             } else {
-                optionOne.setBounds(-100, -100, 1, 1);
-                optionTwo.setBounds(-100, -100, 1, 1);
-                optionThree.setBounds(-100, -100, 1, 1);
+                optionOne.setBounds(260, 346, 188, 178);
+                optionTwo.setBounds(466, 346, 188, 178);
+                optionThree.setBounds(672, 346, 188, 178);
                 optionFour.setBounds(-100, -100, 1, 1);
                 optionFive.setBounds(-100, -100, 1, 1);
-                closePopup.setBounds(-100, -100, 1, 1);
             }
+            return;
+        }
+
+        tabMine.setBounds(-100, -100, 1, 1);
+        tabLift.setBounds(-100, -100, 1, 1);
+        tabRunner.setBounds(-100, -100, 1, 1);
+
+        if (selection == Selection.MINE) {
+            optionOne.setBounds(-100, -100, 1, 1);
+            optionTwo.setBounds(-100, -100, 1, 1);
+            optionThree.setBounds(-100, -100, 1, 1);
+            optionFour.setBounds(-100, -100, 1, 1);
+            optionFive.setBounds(-100, -100, 1, 1);
+            closePopup.setBounds(-100, -100, 1, 1);
         } else if (selection == Selection.LEAF_LIFT || selection == Selection.NEST_RUNNER) {
             optionOne.setBounds(x, y, 96, 92);
             optionTwo.setBounds(x + 110, y, 96, 92);
@@ -1901,6 +2241,42 @@ public class GamePanel extends JPanel {
         LEAF_LIFT,
         NEST_RUNNER,
         ADD_MINE
+    }
+
+    private static class FloatingText {
+        private final String text;
+        private final Color color;
+        private final double life;
+        private double x;
+        private double y;
+        private double age;
+
+        FloatingText(String text, double x, double y, Color color, double life) {
+            this.text = text;
+            this.x = x;
+            this.y = y;
+            this.color = color;
+            this.life = life;
+        }
+    }
+
+    private static class Sparkle {
+        private final Color color;
+        private final double life;
+        private double x;
+        private double y;
+        private double vx;
+        private double vy;
+        private double age;
+
+        Sparkle(double x, double y, double vx, double vy, Color color, double life) {
+            this.x = x;
+            this.y = y;
+            this.vx = vx;
+            this.vy = vy;
+            this.color = color;
+            this.life = life;
+        }
     }
 
     private static class Button {

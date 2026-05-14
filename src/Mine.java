@@ -59,11 +59,15 @@ public class Mine {
         );
     }
 
-    public void update(double deltaSeconds) {
+    public int update(double deltaSeconds) {
+        int producedGems = 0;
         for (Bird bird : birds) {
             int minedGems = bird.update(deltaSeconds, getGemWallX(), getBasketX());
-            stationGems += minedGems * bird.getGemValue();
+            int minedValue = minedGems * bird.getGemValue();
+            stationGems += minedValue;
+            producedGems += minedValue;
         }
+        return producedGems;
     }
 
     public int collectFromStation(int maxLoad) {
@@ -145,6 +149,27 @@ public class Mine {
 
     public int getStationGems() {
         return stationGems;
+    }
+
+    public int getVisualTier() {
+        int progress = getBlueBird().getProgressLevel();
+        if (greenBirdUnlocked) {
+            progress += getGreenBird().getProgressLevel();
+        }
+
+        if (progress >= 24) {
+            return 4;
+        }
+        if (progress >= 18) {
+            return 3;
+        }
+        if (progress >= 12) {
+            return 2;
+        }
+        if (progress >= 7) {
+            return 1;
+        }
+        return 0;
     }
 
     public Bird getBlueBird() {
