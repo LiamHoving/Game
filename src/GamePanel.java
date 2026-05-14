@@ -30,6 +30,9 @@ public class GamePanel extends JPanel {
     private static final int LIFT_CHAIN_OFFSET = 15;
     private static final int SURFACE_PICKUP_X = 278;
     private static final int TOWER_X = 918;
+    private static final int HOME_NEST_RUNNER_X = TOWER_X + 24;
+    private static final int HOME_NEST_DROP_X = TOWER_X + 84;
+    private static final int HOME_NEST_DROP_Y = SURFACE_Y + 20;
     private static final int TOWER_W = 146;
     private static final int MINE_VIEW_TOP = 270;
     private static final int MINE_VIEW_BOTTOM = HEIGHT - 12;
@@ -57,6 +60,11 @@ public class GamePanel extends JPanel {
     private static final Image GEM_SMALL_PILE_ART = loadSprite("assets/gem_small_pile_design.png");
     private static final Image GEM_MEDIUM_PILE_ART = loadSprite("assets/gem_medium_pile_design.png");
     private static final Image GEM_LARGE_PILE_ART = loadSprite("assets/gem_large_pile_design.png");
+    private static final Image MINE_STORAGE_EMPTY_ART = loadSprite("assets/mine_storage_empty.png");
+    private static final Image MINE_STORAGE_SINGLE_ART = loadSprite("assets/mine_storage_single.png");
+    private static final Image MINE_STORAGE_FEW_ART = loadSprite("assets/mine_storage_few.png");
+    private static final Image MINE_STORAGE_MANY_ART = loadSprite("assets/mine_storage_many.png");
+    private static final Image MINE_STORAGE_FULL_ART = loadSprite("assets/mine_storage_full.png");
 
     private final GemBank bank = new GemBank();
     private final List<Mine> mines = new ArrayList<>();
@@ -76,7 +84,7 @@ public class GamePanel extends JPanel {
             "Swift Nest Bird",
             SURFACE_PICKUP_X,
             SURFACE_Y,
-            TOWER_X + 72,
+            HOME_NEST_RUNNER_X,
             SURFACE_Y,
             new Color(203, 97, 172),
             false,
@@ -91,8 +99,10 @@ public class GamePanel extends JPanel {
     private int surfaceGems;
     private int surfaceStationX = SURFACE_PICKUP_X;
     private int lastLiftDropoffGems;
+    private int lastRunnerDropoffGems;
     private double worldTime;
     private double liftDropoffTimer;
+    private double runnerDropoffTimer;
     private double mineScrollY;
     private long lastUpdateTime;
     private final List<Integer> liftPickupRawYs = new ArrayList<>();
@@ -172,6 +182,7 @@ public class GamePanel extends JPanel {
         lastUpdateTime = now;
         worldTime += deltaSeconds;
         liftDropoffTimer = Math.max(0, liftDropoffTimer - deltaSeconds);
+        runnerDropoffTimer = Math.max(0, runnerDropoffTimer - deltaSeconds);
         celebrationTimer = Math.max(0, celebrationTimer - deltaSeconds);
         updateVisualEffects(deltaSeconds);
 
@@ -190,15 +201,17 @@ public class GamePanel extends JPanel {
         if (surfaceGems > 0 && !nestRunner.isBusy()) {
             int load = Math.min(surfaceGems, nestRunner.getCapacity());
             surfaceGems -= load;
-            nestRunner.setRoute(surfaceStationX, SURFACE_Y, TOWER_X + 72, SURFACE_Y);
+            nestRunner.setRoute(surfaceStationX, SURFACE_Y, HOME_NEST_RUNNER_X, SURFACE_Y);
             nestRunner.startTrip(load);
         }
 
         int deliveredGems = nestRunner.update(deltaSeconds);
         if (deliveredGems > 0) {
             bank.add(deliveredGems);
-            addFloatingText("+" + deliveredGems + " saved", TOWER_X + 78, SURFACE_Y + 22, new Color(255, 231, 110), 1.35);
-            addSparkleBurst(TOWER_X + 88, SURFACE_Y + 16, new Color(255, 231, 110), 10);
+            lastRunnerDropoffGems = deliveredGems;
+            runnerDropoffTimer = 0.9;
+            addFloatingText("+" + deliveredGems + " saved", HOME_NEST_DROP_X, HOME_NEST_DROP_Y + 18, new Color(255, 231, 110), 1.35);
+            addSparkleBurst(HOME_NEST_DROP_X, HOME_NEST_DROP_Y, new Color(255, 231, 110), 10);
         }
 
         updateFlyingBirds();
@@ -207,26 +220,26 @@ public class GamePanel extends JPanel {
 
     private void initializeFlyingBirds() {
         flyingBirds.add(new FlyingBirdSprite(
-                new String[]{"assets/birds/blue_bird_1.png", "assets/birds/blue_bird_2.png"},
-                -190, 95, 1.35, 0.085
+                new String[]{"assets/birds/blue_bird_1.png", "assets/birds/blue_bird_2.png", "assets/birds/blue_bird_3.png"},
+                430, 112, 138, 28, 0.070, 0.009
         ));
         flyingBirds.add(new FlyingBirdSprite(
-                new String[]{"assets/birds/yellow_bird_1.png", "assets/birds/yellow_bird_2.png"},
-                340, 130, 1.08, 0.078
+                new String[]{"assets/birds/yellow_bird_1.png", "assets/birds/yellow_bird_2.png", "assets/birds/yellow_bird_3.png"},
+                760, 136, 112, 30, 0.066, -0.008
         ));
         flyingBirds.add(new FlyingBirdSprite(
-                new String[]{"assets/birds/pink_bird_1.png", "assets/birds/pink_bird_2.png"},
-                740, 75, 1.20, 0.078
+                new String[]{"assets/birds/purple_bird_1.png", "assets/birds/purple_bird_2.png", "assets/birds/purple_bird_3.png"},
+                1010, 104, 124, 26, 0.062, 0.010
         ));
         flyingBirds.add(new FlyingBirdSprite(
-                new String[]{"assets/birds/green_bird_1.png", "assets/birds/green_bird_2.png"},
-                1035, 148, 0.95, 0.074
+                new String[]{"assets/birds/green_bird_1.png", "assets/birds/green_bird_2.png", "assets/birds/green_bird_3.png"},
+                610, 160, 150, 24, 0.054, -0.007
         ));
     }
 
     private void updateFlyingBirds() {
         for (FlyingBirdSprite bird : flyingBirds) {
-            bird.update(WIDTH, MINE_VIEW_TOP - 24);
+            bird.update(WIDTH, 48, 180);
         }
     }
 
@@ -813,6 +826,8 @@ public class GamePanel extends JPanel {
     }
 
     private void drawVisualEffects(Graphics2D g) {
+        drawRunnerDropoffEffect(g);
+
         for (Sparkle sparkle : sparkles) {
             double progress = sparkle.age / sparkle.life;
             int alpha = (int) (210 * (1 - progress));
@@ -935,13 +950,6 @@ public class GamePanel extends JPanel {
             drawPaintedSurfaceBackground(g);
         }
 
-        g.setColor(new Color(71, 139, 61));
-        g.fillRect(0, 252, WIDTH, 22);
-        g.setColor(new Color(50, 100, 48));
-        for (int x = 0; x < WIDTH; x += 38) {
-            g.fillOval(x - 8, 241 + (x % 3) * 3, 54, 28);
-        }
-
         g.setColor(new Color(93, 51, 34));
         g.fillRect(0, MINE_VIEW_TOP, WIDTH, HEIGHT - MINE_VIEW_TOP);
         if (MINE_DIRT_BACKGROUND_ART != null) {
@@ -1054,11 +1062,6 @@ public class GamePanel extends JPanel {
 
     private void drawSurfaceAndTower(Graphics2D g) {
         drawLiftTower(g);
-
-        g.setColor(new Color(101, 73, 45));
-        g.setStroke(new BasicStroke(5));
-        g.drawLine(156, SURFACE_Y + 14, TOWER_X + TOWER_W / 2, SURFACE_Y + 14);
-        g.setStroke(new BasicStroke(1));
 
         drawTransportPanelCard(g, 176, 112, "Surface", surfaceGems, true, selection == Selection.LEAF_LIFT);
         drawLiftDropoffEffect(g);
@@ -1381,11 +1384,8 @@ public class GamePanel extends JPanel {
             g.setColor(new Color(0, 0, 0, 85));
             g.fillOval(cabinX + 9, cabinY + cabinH - 12, cabinW - 18, 12);
             g.drawImage(BIRD_LIFT_CABIN_ART, cabinX, cabinY, cabinW, cabinH, null);
-            drawLiftHelmetGlow(g, cabinX + 41, cabinY + 88);
             if (liftLoad > 0) {
-                for (int i = 0; i < Math.min(8, liftLoad); i++) {
-                    drawCrystal(g, cabinX + 21 + i * 5, cabinY + 115 + (i % 2) * 4, 8, new Color(85, 190, 255));
-                }
+                drawLiftLoadNumber(g, cabinX + 15, cabinY + 116, cabinW - 30, 22);
             }
             return;
         }
@@ -1425,22 +1425,23 @@ public class GamePanel extends JPanel {
         g.fillRect(cabinX + 10, cabinY + 51, cabinW - 20, 4);
 
         if (liftLoad > 0) {
-            for (int i = 0; i < Math.min(7, liftLoad); i++) {
-                drawCrystal(g, cabinX + 11 + i * 5, cabinY + 32 + (i % 2) * 4, 8, new Color(85, 190, 255));
-            }
+            drawLiftLoadNumber(g, cabinX + 9, cabinY + 33, cabinW - 18, 19);
         }
 
         g.setColor(new Color(94, 67, 42));
         g.fillRoundRect(cabinX + 2, cabinY + 62, cabinW - 4, 8, 5, 5);
     }
 
-    private void drawLiftHelmetGlow(Graphics2D g, int centerX, int centerY) {
-        g.setColor(new Color(95, 226, 255, 45));
-        g.fillOval(centerX - 23, centerY - 23, 46, 46);
-        g.setColor(new Color(122, 238, 255, 85));
-        g.fillOval(centerX - 14, centerY - 14, 28, 28);
-        g.setColor(new Color(245, 255, 255, 180));
-        g.fillOval(centerX - 6, centerY - 6, 12, 12);
+    private void drawLiftLoadNumber(Graphics2D g, int x, int y, int w, int h) {
+        String loadText = liftLoad > 999 ? "999+" : String.valueOf(liftLoad);
+        g.setColor(new Color(8, 14, 18, 210));
+        g.fillRoundRect(x, y, w, h, 10, 10);
+        g.setColor(new Color(91, 210, 255));
+        g.drawRoundRect(x, y, w, h, 10, 10);
+        drawGem(g, x + 4, y + 5, 9, new Color(96, 238, 255));
+        g.setColor(Color.WHITE);
+        g.setFont(new Font("Arial", Font.BOLD, 9));
+        g.drawString(loadText, x + 19, y + h - 6);
     }
 
     private void drawLiftPickupGemFlow(Graphics2D g, int liftX, int liftY, int liftW, int liftH) {
@@ -1502,6 +1503,31 @@ public class GamePanel extends JPanel {
         }
     }
 
+    private void drawRunnerDropoffEffect(Graphics2D g) {
+        if (runnerDropoffTimer <= 0) {
+            return;
+        }
+
+        double progress = 1.0 - runnerDropoffTimer / 0.9;
+        int startX = HOME_NEST_RUNNER_X + 25;
+        int startY = SURFACE_Y + 28;
+        int endX = HOME_NEST_DROP_X;
+        int endY = HOME_NEST_DROP_Y;
+
+        for (int i = 0; i < 5; i++) {
+            double local = Math.min(1.0, Math.max(0, progress + i * 0.055));
+            int gemX = (int) (startX + (endX - startX) * local);
+            int gemY = (int) (startY + (endY - startY) * local - Math.sin(local * Math.PI) * 16);
+            drawGem(g, gemX, gemY, 9, new Color(96, 238, 255));
+        }
+
+        if (progress < 0.65) {
+            g.setFont(new Font("Arial", Font.BOLD, 11));
+            g.setColor(Color.WHITE);
+            g.drawString("save +" + lastRunnerDropoffGems, HOME_NEST_RUNNER_X - 10, SURFACE_Y + 46);
+        }
+    }
+
     private void drawLiftStatusText(Graphics2D g, int centerX, int actorY) {
         String status = getLiftStatusText();
         if (status.isEmpty()) {
@@ -1534,7 +1560,7 @@ public class GamePanel extends JPanel {
 
     private void drawHomeTower(Graphics2D g) {
         int x = TOWER_X;
-        int y = 120;
+        int y = 100;
 
         if (HOME_NEST_ART != null) {
             int artX = x - 76;
@@ -1662,10 +1688,7 @@ public class GamePanel extends JPanel {
 
             drawLiftConnector(g, LIFT_X + 39, floorY - 26, artX + 42);
             g.drawImage(mineArt, artX, artY, artW, artH, null);
-
-            if (mine.getStationGems() > 0) {
-                drawGemPile(g, mine.getBasketX() + 10, floorY - 84, Math.min(10, mine.getStationGems()), mine.getPrimaryGemColor());
-            }
+            drawMineStorageNest(g, mine, floorY);
         } else {
             g.setColor(new Color(121, 67, 45));
             g.fillRoundRect(caveX - 8, caveY + 9, mine.getCaveWidth() + 34, 56, 11, 11);
@@ -1860,7 +1883,7 @@ public class GamePanel extends JPanel {
     }
 
     private boolean runnerPanelContains(int mouseX, int mouseY) {
-        return mouseX >= TOWER_X && mouseX <= TOWER_X + TOWER_W && mouseY >= 120 && mouseY <= 578;
+        return mouseX >= TOWER_X - 76 && mouseX <= TOWER_X + 184 && mouseY >= 72 && mouseY <= 330;
     }
 
     private void drawMineActors(Graphics2D g) {
@@ -2372,6 +2395,32 @@ public class GamePanel extends JPanel {
         drawCentered(g, text, x + w / 2, y + 34);
     }
 
+    private void drawMineStorageNest(Graphics2D g, Mine mine, int floorY) {
+        Image art = getMineStorageArt(mine.getStationGems());
+        if (art == null) {
+            if (mine.getStationGems() > 0) {
+                drawGemPile(g, mine.getBasketX() + 10, floorY - 84, Math.min(10, mine.getStationGems()), mine.getPrimaryGemColor());
+            }
+            return;
+        }
+
+        int nestW = 102;
+        int nestH = 50;
+        int nestX = mine.getBasketX() + 31;
+        int nestY = floorY - 78;
+        g.drawImage(art, nestX, nestY, nestW, nestH, null);
+
+        if (mine.getStationGems() > 0) {
+            g.setColor(new Color(7, 15, 20, 220));
+            g.fillRoundRect(nestX + nestW - 39, nestY + 6, 34, 18, 9, 9);
+            g.setColor(new Color(91, 210, 255));
+            g.drawRoundRect(nestX + nestW - 39, nestY + 6, 34, 18, 9, 9);
+            g.setColor(Color.WHITE);
+            g.setFont(new Font("Arial", Font.BOLD, 11));
+            drawCentered(g, String.valueOf(mine.getStationGems()), nestX + nestW - 22, nestY + 19);
+        }
+    }
+
     private void drawGemPile(Graphics2D g, int x, int y, int count, Color color) {
         Image art = getGemPileArt(count);
         if (art != null) {
@@ -2392,6 +2441,22 @@ public class GamePanel extends JPanel {
             int col = i % 5;
             drawCrystal(g, x + col * 14 - row * 3, y + 46 - row * 11, 18, i % 2 == 0 ? color : color.darker());
         }
+    }
+
+    private static Image getMineStorageArt(int count) {
+        if (count <= 0) {
+            return MINE_STORAGE_EMPTY_ART;
+        }
+        if (count <= 1) {
+            return MINE_STORAGE_SINGLE_ART;
+        }
+        if (count <= 5) {
+            return MINE_STORAGE_FEW_ART;
+        }
+        if (count <= 14) {
+            return MINE_STORAGE_MANY_ART;
+        }
+        return MINE_STORAGE_FULL_ART;
     }
 
     private static Image getGemPileArt(int count) {

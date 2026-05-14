@@ -154,7 +154,9 @@ public class Courier {
     }
 
     public void draw(Graphics2D g, boolean selected) {
-        drawRoute(g);
+        if (strongCarrier) {
+            drawRoute(g);
+        }
 
         int x = getCurrentX();
         int y = getCurrentY();
@@ -309,15 +311,14 @@ public class Courier {
             g.fillOval(x + 2, y + 37, 7, 7);
             g.fillOval(x + 12, y + 35, 7, 7);
         } else {
-            g.setColor(new Color(96, 59, 37));
-            g.fillRoundRect(x - 17, y + 30, 31, 16, 5, 5);
-            g.setColor(new Color(60, 42, 32));
-            g.fillOval(x - 13, y + 41, 8, 8);
-            g.fillOval(x + 1, y + 41, 8, 8);
-
-            g.setColor(new Color(95, 205, 255));
-            g.fillOval(x - 5, y + 29, 7, 7);
-            g.fillOval(x + 4, y + 31, 6, 6);
+            g.setColor(new Color(14, 16, 22, 220));
+            g.fillRoundRect(x - 8, y + 37, 25, 14, 8, 8);
+            g.setColor(new Color(230, 126, 218));
+            g.drawRoundRect(x - 8, y + 37, 25, 14, 8, 8);
+            g.setFont(new Font("Arial", Font.BOLD, 9));
+            g.setColor(Color.WHITE);
+            g.drawString(String.valueOf(load), x + 1, y + 48);
+            return;
         }
 
         g.setFont(new Font("Arial", Font.BOLD, 10));
