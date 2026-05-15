@@ -1873,32 +1873,123 @@ public class GamePanel extends JPanel {
     private void drawNewMineCard(Graphics2D g) {
         int rawY = FIRST_MINE_FLOOR_Y + (mines.size() - 1) * MINE_ROW_GAP + 48;
         int y = screenY(rawY);
-        if (y < MINE_VIEW_TOP - 20 || y > MINE_VIEW_BOTTOM - 10) {
+        if (y < MINE_VIEW_TOP - 28 || y > MINE_VIEW_BOTTOM - 10) {
             return;
         }
 
-        int x = 230;
-        int w = 486;
-        int h = 74;
+        int x = 186;
+        int w = 530;
+        int h = 96;
+        int nextMine = mines.size() + 1;
+        int cost = getNewMineCost();
         if (selection == Selection.ADD_MINE) {
-            g.setColor(new Color(255, 231, 100, 125));
-            g.fillRoundRect(x - 7, y - 7, w + 14, h + 14, 16, 16);
+            g.setColor(new Color(255, 223, 83, 118));
+            g.fillRoundRect(x - 8, y - 8, w + 16, h + 16, 24, 24);
         }
 
-        drawPurplePanel(g, x, y, w, h, 14);
-        g.setFont(new Font("Arial", Font.BOLD, 21));
-        g.setColor(Color.WHITE);
-        g.drawString("Open Mine " + (mines.size() + 1), x + 24, y + 30);
-        g.setFont(new Font("Arial", Font.PLAIN, 13));
-        g.drawString("Starts with a blue bird. Scroll to manage lower mines.", x + 24, y + 54);
-        drawGoldButton(g, x + w - 126, y + 16, 102, 43, String.valueOf(getNewMineCost()));
+        g.setColor(new Color(18, 10, 22, 105));
+        g.fillRoundRect(x + 6, y + 8, w, h, 24, 24);
+
+        GradientPaint panelPaint = new GradientPaint(
+                x, y, new Color(101, 31, 124, 240),
+                x + w, y + h, new Color(45, 21, 86, 242)
+        );
+        g.setPaint(panelPaint);
+        g.fillRoundRect(x, y, w, h, 24, 24);
+
+        g.setStroke(new BasicStroke(4));
+        g.setColor(new Color(255, 218, 104));
+        g.drawRoundRect(x, y, w, h, 24, 24);
+        g.setStroke(new BasicStroke(1));
+        g.setColor(new Color(255, 247, 180, 130));
+        g.drawRoundRect(x + 5, y + 5, w - 10, h - 10, 18, 18);
+
+        drawOpenMineNumberBadge(g, x + 16, y + 13, 70, nextMine);
+
+        g.setColor(new Color(21, 10, 36, 75));
+        g.fillRoundRect(x + 96, y + 18, w - 252, 59, 16, 16);
+
+        g.setFont(new Font("Serif", Font.BOLD, 29));
+        g.setColor(new Color(45, 20, 10, 145));
+        g.drawString("Open Mine " + nextMine, x + 113, y + 39);
+        g.setColor(new Color(255, 238, 181));
+        g.drawString("Open Mine " + nextMine, x + 111, y + 37);
+
+        drawGem(g, x + 112, y + 54, 17, new Color(96, 238, 255));
+        g.setFont(new Font("Serif", Font.PLAIN, 17));
+        g.setColor(new Color(248, 226, 255));
+        g.drawString("Starts with a blue bird.", x + 140, y + 63);
+        g.setColor(new Color(222, 197, 244));
+        g.drawString("Scroll to manage lower mines.", x + 140, y + 83);
+
+        drawOpenMinePriceButton(g, x + w - 150, y + 21, 130, 55, cost);
+
+        g.setColor(new Color(186, 77, 225, 150));
+        g.fillOval(x + w - 202, y + 17, 5, 5);
+        g.setColor(new Color(255, 238, 124, 170));
+        g.fillOval(x + w - 184, y + 70, 4, 4);
+        drawLeafSprig(g, x + w - 42, y + 20, false, new Color(100, 160, 51));
+        g.setStroke(new BasicStroke(1));
     }
 
     private boolean newMineCardContains(int mouseX, int mouseY) {
         int rawY = FIRST_MINE_FLOOR_Y + (mines.size() - 1) * MINE_ROW_GAP + 48;
         int y = screenY(rawY);
-        return mouseX >= 230 && mouseX <= 716 && mouseY >= y && mouseY <= y + 74
+        return mouseX >= 186 && mouseX <= 716 && mouseY >= y && mouseY <= y + 96
                 && mouseY >= MINE_VIEW_TOP && mouseY <= MINE_VIEW_BOTTOM;
+    }
+
+    private void drawOpenMineNumberBadge(Graphics2D g, int x, int y, int size, int mineNumber) {
+        g.setColor(new Color(16, 8, 29, 115));
+        g.fillOval(x + 5, y + 6, size, size);
+
+        GradientPaint ring = new GradientPaint(x, y, new Color(255, 227, 126), x + size, y + size, new Color(132, 77, 24));
+        g.setPaint(ring);
+        g.fillOval(x, y, size, size);
+        g.setColor(new Color(72, 29, 94));
+        g.fillOval(x + 8, y + 8, size - 16, size - 16);
+        g.setColor(new Color(136, 54, 168, 230));
+        g.drawOval(x + 13, y + 13, size - 26, size - 26);
+
+        drawGem(g, x + 6, y + size - 19, 17, new Color(132, 80, 255));
+        drawGem(g, x + size - 23, y + 5, 14, new Color(96, 238, 255));
+        drawLeafSprig(g, x + size - 4, y + size - 11, false, new Color(103, 163, 56));
+
+        g.setFont(new Font("Serif", Font.BOLD, mineNumber >= 10 ? 35 : 44));
+        String number = String.valueOf(mineNumber);
+        FontMetrics metrics = g.getFontMetrics();
+        int textX = x + (size - metrics.stringWidth(number)) / 2;
+        int textY = y + size / 2 + metrics.getAscent() / 2 - 3;
+        g.setColor(new Color(39, 16, 46, 180));
+        g.drawString(number, textX + 2, textY + 2);
+        g.setColor(new Color(255, 239, 207));
+        g.drawString(number, textX, textY);
+    }
+
+    private void drawOpenMinePriceButton(Graphics2D g, int x, int y, int w, int h, int cost) {
+        g.setColor(new Color(24, 10, 8, 110));
+        g.fillRoundRect(x + 5, y + 6, w, h, 17, 17);
+        GradientPaint paint = new GradientPaint(x, y, new Color(255, 226, 93), x, y + h, new Color(191, 111, 29));
+        g.setPaint(paint);
+        g.fillRoundRect(x, y, w, h, 17, 17);
+        g.setColor(new Color(255, 249, 189));
+        g.setStroke(new BasicStroke(3));
+        g.drawRoundRect(x + 2, y + 2, w - 4, h - 4, 14, 14);
+        g.setColor(new Color(123, 60, 14, 125));
+        g.setStroke(new BasicStroke(1));
+        g.drawRoundRect(x + 7, y + 7, w - 14, h - 14, 11, 11);
+
+        drawGem(g, x + 15, y + 17, 20, new Color(96, 238, 255));
+        String label = String.valueOf(cost);
+        int fontSize = label.length() >= 5 ? 22 : 27;
+        g.setFont(new Font("Serif", Font.BOLD, fontSize));
+        FontMetrics metrics = g.getFontMetrics();
+        int textX = x + 47 + Math.max(0, (w - 53 - metrics.stringWidth(label)) / 2);
+        int textY = y + h / 2 + metrics.getAscent() / 2 - 5;
+        g.setColor(new Color(91, 39, 9, 150));
+        g.drawString(label, textX + 2, textY + 2);
+        g.setColor(new Color(255, 248, 211));
+        g.drawString(label, textX, textY);
     }
 
     private boolean leafLiftPanelContains(int mouseX, int mouseY) {
@@ -2711,35 +2802,90 @@ public class GamePanel extends JPanel {
     }
 
     private void drawContextPanel(Graphics2D g) {
-        if (selection == Selection.MINE) {
+        positionContextButtons();
+
+        if (selection != Selection.ADD_MINE) {
             return;
         }
-
-        positionContextButtons();
 
         int x = 735;
         int y = 292;
         int w = 350;
-        int h = selection == Selection.MINE ? 420 : 232;
+        int h = 254;
         drawDarkGoldPanel(g, x, y, w, h, 18);
+        drawAddMineContextPanel(g, x, y, w, h);
+    }
 
-        g.setFont(new Font("Arial", Font.BOLD, 18));
-        g.setColor(Color.WHITE);
+    private void drawAddMineContextPanel(Graphics2D g, int x, int y, int w, int h) {
+        int nextMine = mines.size() + 1;
+        int cost = getNewMineCost();
+        boolean enabled = bank.canAfford(cost);
 
-        if (selection == Selection.MINE) {
-            Mine mine = getSelectedMine();
-            Bird bird = getSelectedBird();
-            drawMineshaftUpgradePanel(g, mine, bird, x, y, w);
-        } else if (selection == Selection.LEAF_LIFT) {
-            drawCourierPanel(g, "Strong Lift Bird", leafLift, x, y);
-        } else if (selection == Selection.NEST_RUNNER) {
-            drawCourierPanel(g, "Swift Nest Bird", nestRunner, x, y);
-        } else {
-            g.drawString("Open Mine " + (mines.size() + 1), x + 18, y + 30);
-            g.setFont(new Font("Arial", Font.PLAIN, 13));
-            g.setColor(new Color(226, 238, 255));
-            g.drawString("A new mine starts below the others.", x + 18, y + 52);
-            optionOne.drawWideCard(g, "Buy Mine", getNewMineCost() + " gems", "Costs more each time.", "tunnel", bank.canAfford(getNewMineCost()));
+        g.setFont(new Font("Serif", Font.BOLD, 28));
+        g.setColor(new Color(255, 238, 186));
+        g.drawString("Open Mine " + nextMine, x + 24, y + 36);
+        g.setFont(new Font("Serif", Font.PLAIN, 16));
+        g.setColor(new Color(226, 238, 255));
+        g.drawString("A new mine starts below the others.", x + 24, y + 62);
+
+        int cardX = x + 22;
+        int cardY = y + 88;
+        int cardW = w - 44;
+        int cardH = 128;
+
+        g.setColor(new Color(6, 18, 38, 120));
+        g.fillRoundRect(cardX + 5, cardY + 7, cardW, cardH, 20, 20);
+        GradientPaint paint = new GradientPaint(
+                cardX, cardY, enabled ? new Color(24, 80, 142, 244) : new Color(48, 52, 62, 238),
+                cardX + cardW, cardY + cardH, enabled ? new Color(9, 45, 94, 244) : new Color(36, 38, 45, 238)
+        );
+        g.setPaint(paint);
+        g.fillRoundRect(cardX, cardY, cardW, cardH, 20, 20);
+        g.setColor(enabled ? new Color(255, 218, 104) : new Color(122, 122, 122));
+        g.setStroke(new BasicStroke(3));
+        g.drawRoundRect(cardX, cardY, cardW, cardH, 20, 20);
+        g.setStroke(new BasicStroke(1));
+        g.setColor(new Color(255, 245, 178, 70));
+        g.drawRoundRect(cardX + 5, cardY + 5, cardW - 10, cardH - 10, 15, 15);
+
+        drawMineEntranceIcon(g, cardX + 24, cardY + 26, 82, enabled);
+
+        g.setFont(new Font("Serif", Font.BOLD, 28));
+        g.setColor(new Color(31, 14, 6, 140));
+        g.drawString("Buy Mine", cardX + 132, cardY + 43);
+        g.setColor(new Color(255, 240, 196));
+        g.drawString("Buy Mine", cardX + 130, cardY + 41);
+
+        drawGem(g, cardX + 132, cardY + 60, 25, new Color(96, 238, 255));
+        g.setFont(new Font("Serif", Font.BOLD, 28));
+        g.setColor(enabled ? new Color(255, 229, 96) : new Color(196, 196, 196));
+        g.drawString(String.valueOf(cost), cardX + 165, cardY + 84);
+        g.setFont(new Font("Serif", Font.BOLD, 20));
+        g.setColor(new Color(225, 242, 255));
+        g.drawString("gems", cardX + 254, cardY + 84);
+        g.setFont(new Font("Serif", Font.PLAIN, 15));
+        g.setColor(new Color(184, 221, 246));
+        g.drawString("Costs more each time.", cardX + 132, cardY + 109);
+    }
+
+    private void drawMineEntranceIcon(Graphics2D g, int x, int y, int size, boolean enabled) {
+        Color stone = enabled ? new Color(116, 108, 95) : new Color(88, 89, 88);
+        Color wood = enabled ? new Color(150, 88, 37) : new Color(86, 80, 72);
+        g.setColor(new Color(0, 0, 0, 90));
+        g.fillOval(x + 5, y + size - 11, size - 10, 18);
+        g.setColor(stone);
+        g.fillOval(x + 8, y + 9, size - 16, size - 8);
+        g.setColor(new Color(8, 13, 27));
+        g.fillOval(x + 21, y + 24, size - 42, size - 29);
+        g.setColor(wood);
+        g.fillRoundRect(x + 14, y + 22, size - 28, 9, 4, 4);
+        g.fillRoundRect(x + 24, y + 19, 9, size - 28, 4, 4);
+        g.fillRoundRect(x + size - 33, y + 19, 9, size - 28, 4, 4);
+        drawGem(g, x + 6, y + size - 24, 18, new Color(96, 238, 255));
+        drawGem(g, x + size - 24, y + size - 26, 16, new Color(96, 238, 255));
+        if (!enabled) {
+            g.setColor(new Color(20, 20, 20, 95));
+            g.fillOval(x + 8, y + 9, size - 16, size - 8);
         }
     }
 
@@ -2838,8 +2984,6 @@ public class GamePanel extends JPanel {
     }
 
     private void positionContextButtons() {
-        int x = 755;
-        int y = 360;
         if (mineUpgradePopupOpen) {
             int popupX = UPGRADE_POPUP_X;
             int popupY = UPGRADE_POPUP_Y;
@@ -2867,28 +3011,15 @@ public class GamePanel extends JPanel {
         tabMine.setBounds(-100, -100, 1, 1);
         tabLift.setBounds(-100, -100, 1, 1);
         tabRunner.setBounds(-100, -100, 1, 1);
+        optionOne.setBounds(-100, -100, 1, 1);
+        optionTwo.setBounds(-100, -100, 1, 1);
+        optionThree.setBounds(-100, -100, 1, 1);
+        optionFour.setBounds(-100, -100, 1, 1);
+        optionFive.setBounds(-100, -100, 1, 1);
+        closePopup.setBounds(-100, -100, 1, 1);
 
-        if (selection == Selection.MINE) {
-            optionOne.setBounds(-100, -100, 1, 1);
-            optionTwo.setBounds(-100, -100, 1, 1);
-            optionThree.setBounds(-100, -100, 1, 1);
-            optionFour.setBounds(-100, -100, 1, 1);
-            optionFive.setBounds(-100, -100, 1, 1);
-            closePopup.setBounds(-100, -100, 1, 1);
-        } else if (selection == Selection.LEAF_LIFT || selection == Selection.NEST_RUNNER) {
-            optionOne.setBounds(x, y, 96, 92);
-            optionTwo.setBounds(x + 110, y, 96, 92);
-            optionThree.setBounds(x + 220, y, 96, 92);
-            optionFour.setBounds(-100, -100, 1, 1);
-            optionFive.setBounds(-100, -100, 1, 1);
-            closePopup.setBounds(-100, -100, 1, 1);
-        } else {
-            optionOne.setBounds(x, y, 210, 86);
-            optionTwo.setBounds(-100, -100, 1, 1);
-            optionThree.setBounds(-100, -100, 1, 1);
-            optionFour.setBounds(-100, -100, 1, 1);
-            optionFive.setBounds(-100, -100, 1, 1);
-            closePopup.setBounds(-100, -100, 1, 1);
+        if (selection == Selection.ADD_MINE) {
+            optionOne.setBounds(777, 380, 306, 128);
         }
     }
 
