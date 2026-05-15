@@ -37,6 +37,10 @@ public class GamePanel extends JPanel {
     private static final int MINE_VIEW_TOP = 270;
     private static final int MINE_VIEW_BOTTOM = HEIGHT - 12;
     private static final int MINE_VIEW_RIGHT = 724;
+    private static final int UPGRADE_POPUP_X = 70;
+    private static final int UPGRADE_POPUP_Y = 44;
+    private static final int UPGRADE_POPUP_W = 980;
+    private static final int UPGRADE_POPUP_H = 628;
     private static final Image FOREST_BACKGROUND_ART = loadSprite("assets/forest_background.png");
     private static final Image SURFACE_BACKGROUND_ART = loadSprite("assets/surface_forest_background.png");
     private static final Image MINE_DIRT_BACKGROUND_ART = loadSprite("assets/mine_dirt_background.png");
@@ -65,6 +69,11 @@ public class GamePanel extends JPanel {
     private static final Image MINE_STORAGE_FEW_ART = loadSprite("assets/mine_storage_few.png");
     private static final Image MINE_STORAGE_MANY_ART = loadSprite("assets/mine_storage_many.png");
     private static final Image MINE_STORAGE_FULL_ART = loadSprite("assets/mine_storage_full.png");
+    private static final Image UPGRADE_PANEL_ART = loadSprite("assets/upgrade_panel_frame.png");
+    private static final Image UPGRADE_BLUE_BIRD_ART = loadSprite("assets/blue_bird_new.png");
+    private static final Image UPGRADE_YELLOW_BIRD_ART = loadSprite("assets/yellow_bird_new.png");
+    private static final Image UPGRADE_PURPLE_BIRD_ART = loadSprite("assets/purple_bird_new.png");
+    private static final Image UPGRADE_GREEN_BIRD_ART = loadSprite("assets/birds/green_bird_1.png");
 
     private final GemBank bank = new GemBank();
     private final List<Mine> mines = new ArrayList<>();
@@ -381,12 +390,8 @@ public class GamePanel extends JPanel {
     }
 
     private boolean minePopupContains(int mouseX, int mouseY) {
-        int popupX = 230;
-        int popupY = 118;
-        int popupW = 660;
-        int popupH = 486;
-        return mouseX >= popupX && mouseX <= popupX + popupW
-                && mouseY >= popupY && mouseY <= popupY + popupH;
+        return mouseX >= UPGRADE_POPUP_X && mouseX <= UPGRADE_POPUP_X + UPGRADE_POPUP_W
+                && mouseY >= UPGRADE_POPUP_Y && mouseY <= UPGRADE_POPUP_Y + UPGRADE_POPUP_H;
     }
 
     private boolean tryStartBird(int mouseX, int mouseY) {
@@ -460,6 +465,7 @@ public class GamePanel extends JPanel {
         if (mine.canUnlockGreenBird() && bank.spend(cost)) {
             mine.unlockGreenBird();
             selectedGreenBird = true;
+            mineUpgradePopupOpen = false;
             startCelebration("Green Bird Joined!", "Mine " + mine.getId() + " now has a stronger miner.", new Color(105, 230, 120));
             int floorY = screenY(mine.getFloorY());
             addSparkleBurst(mine.getBasketCenterX() + 120, floorY - 76, new Color(105, 230, 120), 24);
@@ -471,6 +477,7 @@ public class GamePanel extends JPanel {
         addFloatingText(label, mine.getBasketCenterX() + 125, Math.max(MINE_VIEW_TOP + 30, floorY - 96), color, 1.25);
         addSparkleBurst(mine.getBasketCenterX() + 148, Math.max(MINE_VIEW_TOP + 40, floorY - 74), color, 8);
         if (!wasGreenReady && mine.canUnlockGreenBird()) {
+            mineUpgradePopupOpen = false;
             startCelebration("Green Bird Ready!", "Blue Bird reached level 15 in Mine " + mine.getId() + ".", new Color(105, 230, 120));
             addSparkleBurst(mine.getBasketCenterX() + 140, floorY - 80, new Color(105, 230, 120), 28);
         }
@@ -1434,14 +1441,20 @@ public class GamePanel extends JPanel {
 
     private void drawLiftLoadNumber(Graphics2D g, int x, int y, int w, int h) {
         String loadText = liftLoad > 999 ? "999+" : String.valueOf(liftLoad);
+        int pillW = Math.min(w, 42);
+        int pillH = Math.min(h, 17);
+        x += (w - pillW) / 2;
+        y += (h - pillH) / 2;
+        w = pillW;
+        h = pillH;
         g.setColor(new Color(8, 14, 18, 210));
-        g.fillRoundRect(x, y, w, h, 10, 10);
+        g.fillRoundRect(x, y, w, h, 8, 8);
         g.setColor(new Color(91, 210, 255));
-        g.drawRoundRect(x, y, w, h, 10, 10);
-        drawGem(g, x + 4, y + 5, 9, new Color(96, 238, 255));
+        g.drawRoundRect(x, y, w, h, 8, 8);
+        drawGem(g, x + 4, y + 4, 8, new Color(96, 238, 255));
         g.setColor(Color.WHITE);
         g.setFont(new Font("Arial", Font.BOLD, 9));
-        g.drawString(loadText, x + 19, y + h - 6);
+        g.drawString(loadText, x + 17, y + h - 5);
     }
 
     private void drawLiftPickupGemFlow(Graphics2D g, int liftX, int liftY, int liftW, int liftH) {
@@ -1909,186 +1922,356 @@ public class GamePanel extends JPanel {
         Mine mine = getSelectedMine();
         Bird bird = getSelectedBird();
 
-        int x = 230;
-        int y = 118;
-        int w = 660;
-        int h = 486;
+        int x = UPGRADE_POPUP_X;
+        int y = UPGRADE_POPUP_Y;
+        int w = UPGRADE_POPUP_W;
+        int h = UPGRADE_POPUP_H;
 
-        g.setColor(new Color(0, 0, 0, 150));
+        g.setColor(new Color(0, 0, 0, 165));
         g.fillRect(0, 0, WIDTH, HEIGHT);
 
-        drawDarkGoldPanel(g, x, y, w, h, 18);
-        drawUpgradeTabs(g, x + 28, y + 63);
+        drawUpgradeFrame(g, x, y, w, h, selection == Selection.MINE
+                ? "Mine " + mine.getId() + " Upgrades"
+                : selection == Selection.LEAF_LIFT ? "Lift Bird Upgrades" : "Nest Runner Upgrades");
+        drawUpgradeTabs(g, x + 42, y + 111);
 
-        closePopup.setBounds(x + w - 45, y + 18, 28, 28);
+        closePopup.setBounds(x + w - 72, y + 34, 44, 44);
         drawCloseButton(g, closePopup);
 
         if (selection == Selection.LEAF_LIFT) {
-            drawCourierUpgradePopup(g, "Strong Lift Bird", "Moves gems from mines to the surface.", leafLift, x, y, new Color(255, 199, 75));
+            drawCourierUpgradePopup(g, "Strong Lift Bird", "Moves gems from mines to the surface.", leafLift, x, y, new Color(255, 199, 75), UPGRADE_YELLOW_BIRD_ART);
             return;
         }
 
         if (selection == Selection.NEST_RUNNER) {
-            drawCourierUpgradePopup(g, "Swift Nest Bird", "Carries surface gems back to the home nest.", nestRunner, x, y, new Color(220, 108, 205));
+            drawCourierUpgradePopup(g, "Swift Nest Bird", "Carries surface gems back to the home nest.", nestRunner, x, y, new Color(220, 108, 205), UPGRADE_PURPLE_BIRD_ART);
             return;
         }
 
-        g.setFont(new Font("Arial", Font.BOLD, 25));
-        g.setColor(Color.WHITE);
-        g.drawString("Mine " + mine.getId() + " Upgrades", x + 28, y + 43);
+        drawMineBirdUpgradeContent(g, mine, bird, x, y);
+    }
 
-        g.setFont(new Font("Arial", Font.PLAIN, 14));
-        g.setColor(new Color(222, 236, 255));
-        g.drawString(bird.getName() + " level " + bird.getProgressLevel() + "/15", x + 30, y + 116);
-        g.drawString(mine.getStationGems() + " gems waiting at this mine", x + 30, y + 138);
+    private void drawUpgradeFrame(Graphics2D g, int x, int y, int w, int h, String title) {
+        if (UPGRADE_PANEL_ART != null) {
+            g.drawImage(UPGRADE_PANEL_ART, x, y, w, h, null);
+        } else {
+            drawDarkGoldPanel(g, x, y, w, h, 24);
+        }
 
-        drawBirdSwitchRow(g, mine, bird, x + 386, y + 98);
-
-        drawUpgradeCard(
-                g,
-                optionOne,
-                "Speed",
-                "Walks faster",
-                "Lv. " + bird.getSpeedLevel() + "/5",
-                bird.canUpgradeSpeed() ? bird.getSpeedCost(mine.getId()) + " gems" : "max",
-                "feather",
-                bird.canUpgradeSpeed() && bank.canAfford(bird.getSpeedCost(mine.getId()))
-        );
-        drawUpgradeCard(
-                g,
-                optionTwo,
-                "Capacity",
-                "Carries more gems",
-                "Lv. " + bird.getStrengthLevel() + "/5",
-                bird.canUpgradeStrength() ? bird.getStrengthCost(mine.getId()) + " gems" : "max",
-                "box",
-                bird.canUpgradeStrength() && bank.canAfford(bird.getStrengthCost(mine.getId()))
-        );
-        drawUpgradeCard(
-                g,
-                optionThree,
-                "Mining Speed",
-                "Mines quicker",
-                "Lv. " + bird.getMiningLevel() + "/5",
-                bird.canUpgradeMining() ? bird.getMiningCost(mine.getId()) + " gems" : "max",
-                "clock",
-                bird.canUpgradeMining() && bank.canAfford(bird.getMiningCost(mine.getId()))
-        );
-
-        drawModalActionButton(
-                g,
-                optionFour,
-                "Auto Mine",
-                bird.hasAutoMining() ? "Enabled" : bird.getAutoMiningCost(mine.getId()) + " gems",
-                bird.canUnlockAutoMining() && bank.canAfford(bird.getAutoMiningCost(mine.getId()))
-        );
-
-        String greenText = mine.hasGreenBird()
-                ? (selectedGreenBird ? "Switch to Blue" : "Switch to Green")
-                : (mine.canUnlockGreenBird() ? mine.getGreenBirdCost() + " gems" : "Needs blue L15");
-        drawModalActionButton(
-                g,
-                optionFive,
-                "Green Bird",
-                greenText,
-                mine.hasGreenBird() || (mine.canUnlockGreenBird() && bank.canAfford(mine.getGreenBirdCost()))
-        );
+        g.setFont(new Font("Serif", Font.BOLD, 42));
+        FontMetrics metrics = g.getFontMetrics();
+        int titleX = x + 146;
+        int titleY = y + 76;
+        g.setColor(new Color(0, 0, 0, 145));
+        g.drawString(title, titleX + 3, titleY + 3);
+        g.setColor(new Color(255, 227, 171));
+        g.drawString(title, titleX, titleY);
+        g.setColor(new Color(94, 52, 26, 150));
+        g.drawLine(titleX, titleY + 10, titleX + metrics.stringWidth(title), titleY + 10);
     }
 
     private void drawUpgradeTabs(Graphics2D g, int x, int y) {
-        drawPopupTab(g, tabMine, "Mine Birds", selection == Selection.MINE);
-        drawPopupTab(g, tabLift, "Lift Bird", selection == Selection.LEAF_LIFT);
-        drawPopupTab(g, tabRunner, "Nest Runner", selection == Selection.NEST_RUNNER);
+        drawPopupTab(g, tabMine, "Mine Birds", "feather", selection == Selection.MINE);
+        drawPopupTab(g, tabLift, "Lift Bird", "leaf", selection == Selection.LEAF_LIFT);
+        drawPopupTab(g, tabRunner, "Nest Runner", "nest", selection == Selection.NEST_RUNNER);
     }
 
-    private void drawPopupTab(Graphics2D g, Button button, String label, boolean active) {
-        g.setColor(active ? new Color(33, 111, 158, 245) : new Color(19, 31, 43, 225));
+    private void drawPopupTab(Graphics2D g, Button button, String label, String icon, boolean active) {
+        GradientPaint paint = new GradientPaint(
+                button.x, button.y,
+                active ? new Color(25, 147, 201, 245) : new Color(20, 34, 43, 230),
+                button.x, button.y + button.height,
+                active ? new Color(12, 78, 129, 245) : new Color(8, 18, 24, 230)
+        );
+        g.setPaint(paint);
         g.fillRoundRect(button.x, button.y, button.width, button.height, 12, 12);
-        g.setColor(active ? new Color(125, 224, 255) : new Color(108, 126, 145));
+        g.setColor(active ? new Color(255, 211, 94) : new Color(105, 76, 44));
+        g.setStroke(new BasicStroke(active ? 3 : 2));
         g.drawRoundRect(button.x, button.y, button.width, button.height, 12, 12);
-        g.setFont(new Font("Arial", Font.BOLD, 13));
-        g.setColor(Color.WHITE);
-        drawCentered(g, label, button.x + button.width / 2, button.y + 23);
+        g.setStroke(new BasicStroke(1));
+        drawPanelIcon(g, icon, button.x + 14, button.y + 7, 25, active ? new Color(92, 221, 255) : new Color(156, 132, 86), active);
+        g.setFont(new Font("Serif", Font.BOLD, 18));
+        g.setColor(active ? Color.WHITE : new Color(208, 185, 143));
+        g.drawString(label, button.x + 48, button.y + 28);
     }
 
-    private void drawCourierUpgradePopup(Graphics2D g, String title, String description, Courier courier, int x, int y, Color accent) {
-        g.setFont(new Font("Arial", Font.BOLD, 25));
-        g.setColor(Color.WHITE);
-        g.drawString(title, x + 28, y + 43);
-        g.setFont(new Font("Arial", Font.PLAIN, 14));
-        g.setColor(new Color(222, 236, 255));
-        g.drawString(description, x + 30, y + 116);
+    private void drawMineBirdUpgradeContent(Graphics2D g, Mine mine, Bird bird, int x, int y) {
+        boolean greenReady = mine.canUnlockGreenBird();
+        boolean greenOwned = mine.hasGreenBird();
+        Image activeBirdArt = selectedGreenBird ? UPGRADE_GREEN_BIRD_ART : UPGRADE_BLUE_BIRD_ART;
+        Color accent = selectedGreenBird ? new Color(109, 224, 93) : new Color(92, 221, 255);
+        Image badgeArt = greenReady && !greenOwned ? UPGRADE_GREEN_BIRD_ART : activeBirdArt;
+        Color badgeAccent = greenReady && !greenOwned ? new Color(105, 230, 120) : accent;
 
-        drawCourierStatBadge(g, x + 30, y + 141, "Capacity", courier.getCapacity() + " gems", accent);
-        drawCourierStatBadge(g, x + 232, y + 141, "Move", "Lv. " + courier.getMoveLevel() + "/" + courier.getMaxStatLevel(), accent);
-        drawCourierStatBadge(g, x + 434, y + 141, "Pickup", "Lv. " + courier.getPickupLevel() + "/" + courier.getMaxStatLevel(), accent);
+        drawBirdSummary(g, x + 62, y + 170, bird, mine, activeBirdArt, accent);
+        drawEditingBadge(g, x + 610, y + 142, 316, 86, selectedGreenBird ? "Editing Green Bird" : greenReady && !greenOwned ? "Green Bird Available" : "Editing Blue Bird",
+                greenOwned ? "Tap Green Bird to switch miners." : greenReady ? "Unlocked at Blue L15." : "Green unlocks at level 15.",
+                badgeArt, badgeAccent);
 
-        drawUpgradeCard(
-                g,
-                optionOne,
-                "Move Speed",
-                "Travels quicker",
-                "Lv. " + courier.getMoveLevel() + "/" + courier.getMaxStatLevel(),
-                courier.canUpgradeMove() ? courier.getMoveCost() + " gems" : "max",
-                "feather",
-                courier.canUpgradeMove() && bank.canAfford(courier.getMoveCost())
-        );
-        drawUpgradeCard(
-                g,
-                optionTwo,
-                "Pickup Speed",
-                "Loads faster",
-                "Lv. " + courier.getPickupLevel() + "/" + courier.getMaxStatLevel(),
-                courier.canUpgradePickup() ? courier.getPickupCost() + " gems" : "max",
-                "clock",
-                courier.canUpgradePickup() && bank.canAfford(courier.getPickupCost())
-        );
-        drawUpgradeCard(
-                g,
-                optionThree,
-                "Capacity",
-                "Carries more",
-                "Lv. " + courier.getCapacityLevel() + "/" + courier.getMaxStatLevel(),
-                courier.canUpgradeCapacity() ? courier.getCapacityCost() + " gems" : "max",
-                "box",
-                courier.canUpgradeCapacity() && bank.canAfford(courier.getCapacityCost())
-        );
+        drawBirdUpgradeCard(g, optionOne, "SPEED", "Walks faster", "Lv. " + bird.getSpeedLevel() + "/5",
+                bird.canUpgradeSpeed() ? bird.getSpeedCost(mine.getId()) : 0, bird.canUpgradeSpeed(), bank.canAfford(bird.getSpeedCost(mine.getId())), "feather", accent);
+        drawBirdUpgradeCard(g, optionTwo, "NEST CAPACITY", "Carries more gems", "Lv. " + bird.getStrengthLevel() + "/5",
+                bird.canUpgradeStrength() ? bird.getStrengthCost(mine.getId()) : 0, bird.canUpgradeStrength(), bank.canAfford(bird.getStrengthCost(mine.getId())), "nest", accent);
+        drawBirdUpgradeCard(g, optionThree, "PECK POWER", "Mines quicker", "Lv. " + bird.getMiningLevel() + "/5",
+                bird.canUpgradeMining() ? bird.getMiningCost(mine.getId()) : 0, bird.canUpgradeMining(), bank.canAfford(bird.getMiningCost(mine.getId())), "pickaxe", accent);
+
+        drawAutoMineCard(g, optionFour, bird, mine);
+        drawGreenBirdCard(g, optionFive, mine, greenOwned, greenReady);
     }
 
-    private void drawCourierStatBadge(Graphics2D g, int x, int y, String label, String value, Color accent) {
-        g.setColor(new Color(15, 27, 38, 218));
-        g.fillRoundRect(x, y, 176, 54, 13, 13);
-        g.setColor(new Color(accent.getRed(), accent.getGreen(), accent.getBlue(), 190));
-        g.drawRoundRect(x, y, 176, 54, 13, 13);
-        g.setFont(new Font("Arial", Font.PLAIN, 12));
-        g.setColor(new Color(215, 232, 242));
-        g.drawString(label, x + 14, y + 20);
-        g.setFont(new Font("Arial", Font.BOLD, 17));
-        g.setColor(Color.WHITE);
-        g.drawString(value, x + 14, y + 42);
+    private void drawCourierUpgradePopup(Graphics2D g, String title, String description, Courier courier, int x, int y, Color accent, Image birdArt) {
+        drawEditingBadge(g, x + 610, y + 142, 316, 86, title, description, birdArt, accent);
+        drawCourierSummary(g, x + 64, y + 178, courier, accent);
+
+        drawBirdUpgradeCard(g, optionOne, "MOVE SPEED", "Travels quicker", "Lv. " + courier.getMoveLevel() + "/" + courier.getMaxStatLevel(),
+                courier.canUpgradeMove() ? courier.getMoveCost() : 0, courier.canUpgradeMove(), bank.canAfford(courier.getMoveCost()), "feather", accent);
+        drawBirdUpgradeCard(g, optionTwo, "PICKUP", "Loads faster", "Lv. " + courier.getPickupLevel() + "/" + courier.getMaxStatLevel(),
+                courier.canUpgradePickup() ? courier.getPickupCost() : 0, courier.canUpgradePickup(), bank.canAfford(courier.getPickupCost()), "clock", accent);
+        drawBirdUpgradeCard(g, optionThree, "CAPACITY", "Carries more gems", "Lv. " + courier.getCapacityLevel() + "/" + courier.getMaxStatLevel(),
+                courier.canUpgradeCapacity() ? courier.getCapacityCost() : 0, courier.canUpgradeCapacity(), bank.canAfford(courier.getCapacityCost()), "box", accent);
     }
 
-    private void drawBirdSwitchRow(Graphics2D g, Mine mine, Bird bird, int x, int y) {
-        g.setColor(new Color(18, 32, 45, 210));
-        g.fillRoundRect(x, y, 205, 60, 12, 12);
-        drawGem(g, x + 14, y + 15, 24, bird.getGemColor());
-        g.setFont(new Font("Arial", Font.BOLD, 14));
+    private void drawBirdSummary(Graphics2D g, int x, int y, Bird bird, Mine mine, Image art, Color accent) {
+        drawPanelIcon(g, "bird", x, y - 12, 34, accent, true);
+        g.setFont(new Font("Serif", Font.BOLD, 23));
+        g.setColor(new Color(255, 229, 182));
+        g.drawString(bird.getName() + " level " + bird.getProgressLevel() + "/15", x + 48, y + 8);
+        drawGem(g, x + 5, y + 26, 28, bird.getGemColor());
+        g.setFont(new Font("Serif", Font.BOLD, 22));
         g.setColor(Color.WHITE);
-        g.drawString(selectedGreenBird ? "Editing Green Bird" : "Editing Blue Bird", x + 48, y + 25);
-        g.setFont(new Font("Arial", Font.PLAIN, 12));
-        g.setColor(new Color(220, 235, 245));
-        g.drawString(mine.hasGreenBird() ? "Use Green Bird button to switch" : "Green unlocks at level 15", x + 48, y + 44);
+        String waitingText = mine.getStationGems() <= 0 ? "0 gems waiting at this mine" : mine.getStationGems() + " gems waiting at this mine";
+        g.drawString(waitingText, x + 48, y + 52);
+    }
+
+    private void drawCourierSummary(Graphics2D g, int x, int y, Courier courier, Color accent) {
+        drawPanelIcon(g, "nest", x, y - 12, 36, accent, true);
+        g.setFont(new Font("Serif", Font.BOLD, 23));
+        g.setColor(new Color(255, 229, 182));
+        g.drawString(courier.getName(), x + 50, y + 8);
+        drawGem(g, x + 6, y + 28, 26, new Color(96, 238, 255));
+        g.setFont(new Font("Serif", Font.BOLD, 20));
+        g.setColor(Color.WHITE);
+        g.drawString("Capacity " + courier.getCapacity() + " gems", x + 50, y + 52);
+    }
+
+    private void drawEditingBadge(Graphics2D g, int x, int y, int w, int h, String title, String subtitle, Image art, Color accent) {
+        g.setColor(new Color(7, 23, 34, 220));
+        g.fillRoundRect(x, y, w, h, 18, 18);
+        g.setColor(new Color(210, 143, 58, 220));
+        g.setStroke(new BasicStroke(2));
+        g.drawRoundRect(x, y, w, h, 18, 18);
+        g.setStroke(new BasicStroke(1));
+
+        drawPopupBirdPortrait(g, art, x + 26, y + 10, 78, 66, accent);
+        g.setFont(new Font("Serif", Font.BOLD, 25));
+        g.setColor(new Color(255, 232, 185));
+        g.drawString(title, x + 112, y + 35);
+        drawGem(g, x + 112, y + 49, 20, accent);
+        g.setFont(new Font("Serif", Font.BOLD, 16));
+        g.setColor(Color.WHITE);
+        g.drawString(subtitle, x + 142, y + 64);
+    }
+
+    private void drawPopupBirdPortrait(Graphics2D g, Image art, int x, int y, int w, int h, Color accent) {
+        g.setColor(new Color(61, 36, 20, 220));
+        g.fillOval(x + 11, y + 45, w - 24, 25);
+        g.setColor(new Color(accent.getRed(), accent.getGreen(), accent.getBlue(), 70));
+        g.fillOval(x + 6, y + 10, w - 12, h - 12);
+        if (art != null) {
+            int imgW = w;
+            int imgH = h + 12;
+            g.drawImage(art, x - 4, y - 8, imgW, imgH, null);
+        } else {
+            drawPanelIcon(g, "bird", x + 18, y + 14, 42, accent, true);
+        }
+    }
+
+    private void drawBirdUpgradeCard(Graphics2D g, Button button, String title, String description, String level, int cost, boolean upgradeable, boolean affordable, String icon, Color accent) {
+        boolean enabled = upgradeable && affordable;
+        g.setColor(new Color(5, 24, 36, 230));
+        g.fillRoundRect(button.x, button.y, button.width, button.height, 16, 16);
+        g.setColor(new Color(202, 139, 50, 230));
+        g.setStroke(new BasicStroke(2));
+        g.drawRoundRect(button.x, button.y, button.width, button.height, 16, 16);
+        g.setColor(new Color(accent.getRed(), accent.getGreen(), accent.getBlue(), 85));
+        g.drawRoundRect(button.x + 5, button.y + 5, button.width - 10, button.height - 10, 13, 13);
+        g.setStroke(new BasicStroke(1));
+
+        drawWoodPlaque(g, button.x + 30, button.y + 14, button.width - 60, 40, title);
+        drawIconMedallion(g, icon, button.x + button.width / 2, button.y + 88, accent, upgradeable);
+
+        g.setFont(new Font("Serif", Font.BOLD, 20));
+        g.setColor(new Color(255, 228, 177));
+        drawCentered(g, description, button.x + button.width / 2, button.y + 134);
+        g.setFont(new Font("Serif", Font.BOLD, 21));
+        g.setColor(new Color(255, 197, 68));
+        drawCentered(g, level, button.x + button.width / 2, button.y + 158);
+
+        drawCostPill(g, button.x + 28, button.y + button.height - 43, button.width - 56, 35,
+                upgradeable ? String.valueOf(cost) + " gems" : "MAX LEVEL", enabled || !upgradeable);
+    }
+
+    private void drawAutoMineCard(Graphics2D g, Button button, Bird bird, Mine mine) {
+        boolean canBuy = bird.canUnlockAutoMining() && bank.canAfford(bird.getAutoMiningCost(mine.getId()));
+        drawWideFeatureCard(g, button, "AUTO MINE", bird.hasAutoMining() ? "Always on" : "Tap to buy",
+                bird.hasAutoMining() ? "ENABLED" : bird.getAutoMiningCost(mine.getId()) + " gems", "egg", canBuy, bird.hasAutoMining(), new Color(92, 221, 255));
+    }
+
+    private void drawGreenBirdCard(Graphics2D g, Button button, Mine mine, boolean owned, boolean ready) {
+        if (owned) {
+            drawWideFeatureCard(g, button, selectedGreenBird ? "BLUE BIRD" : "GREEN BIRD", "Switch the selected mine bird",
+                    selectedGreenBird ? "TAP TO BLUE" : "TAP TO GREEN", "bird", true, false, new Color(105, 230, 120));
+            return;
+        }
+
+        if (ready) {
+            drawWideFeatureCard(g, button, "GREEN BIRD AVAILABLE", "A new bird joins your team!",
+                    "TAP TO UNLOCK", "bird", bank.canAfford(mine.getGreenBirdCost()), false, new Color(105, 230, 120));
+            return;
+        }
+
+        drawWideFeatureCard(g, button, "UNLOCK GREEN BIRD", "Needs blue L15",
+                "LOCKED", "lock", false, false, new Color(150, 150, 145));
+    }
+
+    private void drawWideFeatureCard(Graphics2D g, Button button, String title, String subtitle, String value, String icon, boolean enabled, boolean purchased, Color accent) {
+        g.setColor(enabled || purchased ? new Color(5, 60, 63, 230) : new Color(32, 34, 39, 232));
+        g.fillRoundRect(button.x, button.y, button.width, button.height, 16, 16);
+        g.setColor(enabled || purchased ? accent : new Color(117, 108, 97));
+        g.setStroke(new BasicStroke(2));
+        g.drawRoundRect(button.x, button.y, button.width, button.height, 16, 16);
+        g.setStroke(new BasicStroke(1));
+
+        drawPanelIcon(g, icon, button.x + 25, button.y + 14, 52, accent, enabled || purchased);
+        g.setFont(new Font("Serif", Font.BOLD, 21));
+        g.setColor(new Color(255, 232, 185));
+        g.drawString(title, button.x + 94, button.y + 30);
+        g.setFont(new Font("Serif", Font.BOLD, 16));
+        g.setColor(Color.WHITE);
+        g.drawString(subtitle, button.x + 94, button.y + 52);
+
+        int pillW = Math.min(178, button.width - 220);
+        if (pillW > 92) {
+            drawCostPill(g, button.x + button.width - pillW - 18, button.y + 44, pillW, 30, value, enabled || purchased);
+        } else {
+            g.setFont(new Font("Arial", Font.BOLD, 13));
+            g.setColor(Color.WHITE);
+            g.drawString(value, button.x + 94, button.y + 72);
+        }
+    }
+
+    private void drawWoodPlaque(Graphics2D g, int x, int y, int w, int h, String title) {
+        GradientPaint plaque = new GradientPaint(x, y, new Color(114, 66, 32), x, y + h, new Color(55, 32, 19));
+        g.setPaint(plaque);
+        g.fillRoundRect(x, y, w, h, 17, 17);
+        g.setColor(new Color(226, 166, 73));
+        g.drawRoundRect(x, y, w, h, 17, 17);
+        g.setFont(new Font("Serif", Font.BOLD, 23));
+        g.setColor(new Color(255, 235, 189));
+        drawCentered(g, title, x + w / 2, y + 27);
+    }
+
+    private void drawIconMedallion(Graphics2D g, String icon, int centerX, int centerY, Color accent, boolean enabled) {
+        g.setColor(enabled ? new Color(accent.getRed(), accent.getGreen(), accent.getBlue(), 70) : new Color(70, 72, 75, 120));
+        g.fillOval(centerX - 48, centerY - 48, 96, 96);
+        g.setColor(new Color(202, 139, 50, 230));
+        g.setStroke(new BasicStroke(3));
+        g.drawOval(centerX - 48, centerY - 48, 96, 96);
+        g.setStroke(new BasicStroke(1));
+        drawPanelIcon(g, icon, centerX - 33, centerY - 33, 66, accent, enabled);
+    }
+
+    private void drawCostPill(Graphics2D g, int x, int y, int w, int h, String text, boolean enabled) {
+        GradientPaint paint = new GradientPaint(x, y,
+                enabled ? new Color(137, 207, 58) : new Color(93, 100, 99),
+                x, y + h,
+                enabled ? new Color(50, 148, 44) : new Color(57, 61, 62));
+        g.setPaint(paint);
+        g.fillRoundRect(x, y, w, h, 11, 11);
+        g.setColor(enabled ? new Color(212, 255, 158) : new Color(130, 135, 135));
+        g.drawRoundRect(x, y, w, h, 11, 11);
+        if (!text.toUpperCase().contains("MAX") && !text.toUpperCase().contains("LOCK") && !text.toUpperCase().contains("ENABLED") && !text.toUpperCase().contains("TAP")) {
+            drawGem(g, x + 18, y + 7, 21, new Color(96, 238, 255));
+            g.setFont(new Font("Serif", Font.BOLD, 21));
+            g.setColor(Color.WHITE);
+            g.drawString(text, x + 49, y + 25);
+        } else {
+            g.setFont(new Font("Serif", Font.BOLD, 20));
+            g.setColor(Color.WHITE);
+            drawCentered(g, text, x + w / 2, y + 25);
+        }
+    }
+
+    private void drawPanelIcon(Graphics2D g, String icon, int x, int y, int size, Color accent, boolean enabled) {
+        Color main = enabled ? new Color(255, 229, 106) : new Color(145, 145, 140);
+        if ("feather".equals(icon)) {
+            g.setColor(enabled ? new Color(222, 250, 255) : main);
+            g.fillOval(x + size / 4, y + 2, size / 2, size - 5);
+            g.setColor(accent);
+            g.drawLine(x + size / 2, y + 4, x + size / 5, y + size - 4);
+            g.drawLine(x + size / 2 - 1, y + size / 3, x + size - 6, y + size / 4);
+            g.drawLine(x + size / 2 - 7, y + size / 2, x + size - 9, y + size / 2);
+        } else if ("nest".equals(icon) || "egg".equals(icon)) {
+            g.setColor(new Color(116, 70, 33));
+            g.fillOval(x + 3, y + size / 2, size - 6, size / 3);
+            g.setColor(new Color(176, 108, 44));
+            g.drawArc(x + 3, y + size / 2 - 7, size - 6, size / 2, 180, 180);
+            if ("egg".equals(icon)) {
+                g.setColor(accent);
+                g.fillOval(x + size / 2 - 9, y + 8, 18, 26);
+            } else {
+                drawGem(g, x + size / 2 - 12, y + size / 2 - 7, 20, accent);
+            }
+        } else if ("pickaxe".equals(icon)) {
+            g.setColor(new Color(126, 84, 47));
+            g.setStroke(new BasicStroke(5));
+            g.drawLine(x + 14, y + size - 10, x + size - 14, y + 12);
+            g.setColor(new Color(210, 217, 222));
+            g.drawLine(x + size / 2, y + 10, x + size - 5, y + 25);
+            g.drawLine(x + size / 2, y + 10, x + 14, y + 23);
+            g.setStroke(new BasicStroke(1));
+        } else if ("clock".equals(icon)) {
+            g.setColor(main);
+            g.fillOval(x + 5, y + 5, size - 10, size - 10);
+            g.setColor(new Color(35, 58, 50));
+            g.drawOval(x + 5, y + 5, size - 10, size - 10);
+            g.drawLine(x + size / 2, y + size / 2, x + size / 2, y + 12);
+            g.drawLine(x + size / 2, y + size / 2, x + size - 13, y + size / 2);
+        } else if ("box".equals(icon)) {
+            g.setColor(main);
+            g.fillRoundRect(x + 8, y + 17, size - 16, size - 22, 8, 8);
+            g.setColor(new Color(80, 54, 36));
+            g.drawLine(x + 8, y + size / 2, x + size - 8, y + size / 2);
+        } else if ("leaf".equals(icon)) {
+            g.setColor(main);
+            g.fillOval(x + 7, y + 8, size - 12, size / 2);
+            g.setColor(accent);
+            g.drawLine(x + 10, y + size / 2, x + size - 6, y + 12);
+        } else if ("lock".equals(icon)) {
+            g.setColor(main);
+            g.drawRoundRect(x + 13, y + 7, size - 26, size / 2, 16, 16);
+            g.fillRoundRect(x + 8, y + size / 3, size - 16, size / 2, 7, 7);
+            g.setColor(new Color(30, 34, 36));
+            g.fillOval(x + size / 2 - 4, y + size / 2, 8, 8);
+        } else {
+            g.setColor(accent);
+            g.fillOval(x + 8, y + 8, size - 16, size - 16);
+            g.setColor(new Color(255, 214, 87));
+            g.fillPolygon(new int[]{x + size - 15, x + size + 5, x + size - 15}, new int[]{y + size / 2 - 8, y + size / 2, y + size / 2 + 8}, 3);
+        }
     }
 
     private void drawCloseButton(Graphics2D g, Button button) {
-        g.setColor(new Color(52, 63, 72, 230));
+        g.setColor(new Color(8, 54, 78, 238));
         g.fillOval(button.x, button.y, button.width, button.height);
-        g.setColor(new Color(255, 218, 116));
+        g.setColor(new Color(226, 166, 73));
+        g.setStroke(new BasicStroke(4));
         g.drawOval(button.x, button.y, button.width, button.height);
-        g.setColor(Color.WHITE);
-        g.setStroke(new BasicStroke(2));
-        g.drawLine(button.x + 9, button.y + 9, button.x + 19, button.y + 19);
-        g.drawLine(button.x + 19, button.y + 9, button.x + 9, button.y + 19);
+        g.setColor(new Color(255, 228, 172));
+        g.setStroke(new BasicStroke(5));
+        int pad = Math.max(11, button.width / 4);
+        g.drawLine(button.x + pad, button.y + pad, button.x + button.width - pad, button.y + button.height - pad);
+        g.drawLine(button.x + button.width - pad, button.y + pad, button.x + pad, button.y + button.height - pad);
         g.setStroke(new BasicStroke(1));
     }
 
@@ -2298,21 +2481,23 @@ public class GamePanel extends JPanel {
         int x = 755;
         int y = 360;
         if (mineUpgradePopupOpen) {
-            tabMine.setBounds(258, 178, 118, 34);
-            tabLift.setBounds(386, 178, 118, 34);
-            tabRunner.setBounds(514, 178, 132, 34);
-            closePopup.setBounds(845, 136, 28, 28);
+            int popupX = UPGRADE_POPUP_X;
+            int popupY = UPGRADE_POPUP_Y;
+            tabMine.setBounds(popupX + 42, popupY + 111, 188, 42);
+            tabLift.setBounds(popupX + 244, popupY + 111, 170, 42);
+            tabRunner.setBounds(popupX + 428, popupY + 111, 192, 42);
+            closePopup.setBounds(popupX + UPGRADE_POPUP_W - 72, popupY + 34, 44, 44);
 
             if (selection == Selection.MINE) {
-                optionOne.setBounds(260, 260, 188, 178);
-                optionTwo.setBounds(466, 260, 188, 178);
-                optionThree.setBounds(672, 260, 188, 178);
-                optionFour.setBounds(260, 468, 286, 64);
-                optionFive.setBounds(574, 468, 286, 64);
+                optionOne.setBounds(popupX + 52, popupY + 255, 260, 210);
+                optionTwo.setBounds(popupX + 360, popupY + 255, 260, 210);
+                optionThree.setBounds(popupX + 668, popupY + 255, 260, 210);
+                optionFour.setBounds(popupX + 52, popupY + 492, 414, 82);
+                optionFive.setBounds(popupX + 506, popupY + 492, 422, 82);
             } else {
-                optionOne.setBounds(260, 346, 188, 178);
-                optionTwo.setBounds(466, 346, 188, 178);
-                optionThree.setBounds(672, 346, 188, 178);
+                optionOne.setBounds(popupX + 52, popupY + 276, 260, 220);
+                optionTwo.setBounds(popupX + 360, popupY + 276, 260, 220);
+                optionThree.setBounds(popupX + 668, popupY + 276, 260, 220);
                 optionFour.setBounds(-100, -100, 1, 1);
                 optionFive.setBounds(-100, -100, 1, 1);
             }
