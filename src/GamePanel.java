@@ -13,6 +13,7 @@ import java.awt.RenderingHints;
 import java.awt.Shape;
 import java.awt.event.MouseAdapter;
 import java.awt.event.MouseEvent;
+import java.awt.geom.RoundRectangle2D;
 import java.io.File;
 import java.io.IOException;
 import java.util.ArrayList;
@@ -73,7 +74,16 @@ public class GamePanel extends JPanel {
     private static final Image UPGRADE_BLUE_BIRD_ART = loadSprite("assets/blue_bird_new.png");
     private static final Image UPGRADE_YELLOW_BIRD_ART = loadSprite("assets/yellow_bird_new.png");
     private static final Image UPGRADE_PURPLE_BIRD_ART = loadSprite("assets/purple_bird_new.png");
-    private static final Image UPGRADE_GREEN_BIRD_ART = loadSprite("assets/birds/green_bird_1.png");
+    private static final Image UPGRADE_GREEN_BIRD_ART = loadSprite("assets/birds/green_bird_2.png");
+    private static final Image UPGRADE_CARD_MINE_SPEED_ART = loadSprite("assets/upgrade_cards/mine_speed.png");
+    private static final Image UPGRADE_CARD_MINE_CAPACITY_ART = loadSprite("assets/upgrade_cards/mine_capacity.png");
+    private static final Image UPGRADE_CARD_MINE_PECK_ART = loadSprite("assets/upgrade_cards/mine_peck_power.png");
+    private static final Image UPGRADE_CARD_LIFT_MOVE_ART = loadSprite("assets/upgrade_cards/lift_move_speed.png");
+    private static final Image UPGRADE_CARD_LIFT_PICKUP_ART = loadSprite("assets/upgrade_cards/lift_pickup.png");
+    private static final Image UPGRADE_CARD_LIFT_CAPACITY_ART = loadSprite("assets/upgrade_cards/lift_capacity.png");
+    private static final Image UPGRADE_CARD_RUNNER_MOVE_ART = loadSprite("assets/upgrade_cards/runner_move_speed.png");
+    private static final Image UPGRADE_CARD_RUNNER_PICKUP_ART = loadSprite("assets/upgrade_cards/runner_pickup.png");
+    private static final Image UPGRADE_CARD_RUNNER_CAPACITY_ART = loadSprite("assets/upgrade_cards/runner_capacity.png");
 
     private final GemBank bank = new GemBank();
     private final List<Mine> mines = new ArrayList<>();
@@ -1973,26 +1983,40 @@ public class GamePanel extends JPanel {
     private void drawUpgradeTabs(Graphics2D g, int x, int y) {
         drawPopupTab(g, tabMine, "Mine Birds", "feather", selection == Selection.MINE);
         drawPopupTab(g, tabLift, "Lift Bird", "leaf", selection == Selection.LEAF_LIFT);
-        drawPopupTab(g, tabRunner, "Nest Runner", "nest", selection == Selection.NEST_RUNNER);
+        drawPopupTab(g, tabRunner, "Nest Runner", "plainNest", selection == Selection.NEST_RUNNER);
     }
 
     private void drawPopupTab(Graphics2D g, Button button, String label, String icon, boolean active) {
-        GradientPaint paint = new GradientPaint(
+        g.setColor(new Color(0, 0, 0, 95));
+        g.fillRoundRect(button.x + 4, button.y + 5, button.width, button.height, 14, 14);
+
+        GradientPaint frame = new GradientPaint(
                 button.x, button.y,
-                active ? new Color(25, 147, 201, 245) : new Color(20, 34, 43, 230),
+                active ? new Color(222, 160, 62) : new Color(111, 75, 39),
                 button.x, button.y + button.height,
-                active ? new Color(12, 78, 129, 245) : new Color(8, 18, 24, 230)
+                active ? new Color(96, 54, 25) : new Color(38, 26, 18)
         );
-        g.setPaint(paint);
-        g.fillRoundRect(button.x, button.y, button.width, button.height, 12, 12);
-        g.setColor(active ? new Color(255, 211, 94) : new Color(105, 76, 44));
-        g.setStroke(new BasicStroke(active ? 3 : 2));
-        g.drawRoundRect(button.x, button.y, button.width, button.height, 12, 12);
-        g.setStroke(new BasicStroke(1));
-        drawPanelIcon(g, icon, button.x + 14, button.y + 7, 25, active ? new Color(92, 221, 255) : new Color(156, 132, 86), active);
-        g.setFont(new Font("Serif", Font.BOLD, 18));
-        g.setColor(active ? Color.WHITE : new Color(208, 185, 143));
-        g.drawString(label, button.x + 48, button.y + 28);
+        g.setPaint(frame);
+        g.fillRoundRect(button.x, button.y, button.width, button.height, 14, 14);
+
+        GradientPaint inside = new GradientPaint(
+                button.x, button.y + 4,
+                active ? new Color(25, 151, 204, 245) : new Color(20, 35, 43, 238),
+                button.x, button.y + button.height - 5,
+                active ? new Color(7, 80, 129, 245) : new Color(6, 18, 23, 238)
+        );
+        g.setPaint(inside);
+        g.fillRoundRect(button.x + 5, button.y + 5, button.width - 10, button.height - 10, 11, 11);
+
+        g.setColor(active ? new Color(97, 229, 255, 175) : new Color(223, 170, 92, 85));
+        g.drawRoundRect(button.x + 9, button.y + 9, button.width - 18, button.height - 18, 9, 9);
+
+        drawPanelIcon(g, icon, button.x + 15, button.y + 7, 26, active ? new Color(107, 232, 255) : new Color(161, 132, 86), active);
+        g.setFont(new Font("Serif", Font.BOLD, 19));
+        g.setColor(new Color(0, 0, 0, 150));
+        g.drawString(label, button.x + 50, button.y + 30);
+        g.setColor(active ? new Color(255, 241, 207) : new Color(214, 186, 139));
+        g.drawString(label, button.x + 49, button.y + 29);
     }
 
     private void drawMineBirdUpgradeContent(Graphics2D g, Mine mine, Bird bird, int x, int y) {
@@ -2009,11 +2033,11 @@ public class GamePanel extends JPanel {
                 badgeArt, badgeAccent);
 
         drawBirdUpgradeCard(g, optionOne, "SPEED", "Walks faster", "Lv. " + bird.getSpeedLevel() + "/5",
-                bird.canUpgradeSpeed() ? bird.getSpeedCost(mine.getId()) : 0, bird.canUpgradeSpeed(), bank.canAfford(bird.getSpeedCost(mine.getId())), "feather", accent);
+                bird.canUpgradeSpeed() ? bird.getSpeedCost(mine.getId()) : 0, bird.canUpgradeSpeed(), bank.canAfford(bird.getSpeedCost(mine.getId())), "feather", accent, UPGRADE_CARD_MINE_SPEED_ART);
         drawBirdUpgradeCard(g, optionTwo, "NEST CAPACITY", "Carries more gems", "Lv. " + bird.getStrengthLevel() + "/5",
-                bird.canUpgradeStrength() ? bird.getStrengthCost(mine.getId()) : 0, bird.canUpgradeStrength(), bank.canAfford(bird.getStrengthCost(mine.getId())), "nest", accent);
+                bird.canUpgradeStrength() ? bird.getStrengthCost(mine.getId()) : 0, bird.canUpgradeStrength(), bank.canAfford(bird.getStrengthCost(mine.getId())), "nest", accent, UPGRADE_CARD_MINE_CAPACITY_ART);
         drawBirdUpgradeCard(g, optionThree, "PECK POWER", "Mines quicker", "Lv. " + bird.getMiningLevel() + "/5",
-                bird.canUpgradeMining() ? bird.getMiningCost(mine.getId()) : 0, bird.canUpgradeMining(), bank.canAfford(bird.getMiningCost(mine.getId())), "pickaxe", accent);
+                bird.canUpgradeMining() ? bird.getMiningCost(mine.getId()) : 0, bird.canUpgradeMining(), bank.canAfford(bird.getMiningCost(mine.getId())), "pickaxe", accent, UPGRADE_CARD_MINE_PECK_ART);
 
         drawAutoMineCard(g, optionFour, bird, mine);
         drawGreenBirdCard(g, optionFive, mine, greenOwned, greenReady);
@@ -2022,17 +2046,21 @@ public class GamePanel extends JPanel {
     private void drawCourierUpgradePopup(Graphics2D g, String title, String description, Courier courier, int x, int y, Color accent, Image birdArt) {
         drawEditingBadge(g, x + 610, y + 142, 316, 86, title, description, birdArt, accent);
         drawCourierSummary(g, x + 64, y + 178, courier, accent);
+        boolean lift = courier == leafLift;
 
         drawBirdUpgradeCard(g, optionOne, "MOVE SPEED", "Travels quicker", "Lv. " + courier.getMoveLevel() + "/" + courier.getMaxStatLevel(),
-                courier.canUpgradeMove() ? courier.getMoveCost() : 0, courier.canUpgradeMove(), bank.canAfford(courier.getMoveCost()), "feather", accent);
+                courier.canUpgradeMove() ? courier.getMoveCost() : 0, courier.canUpgradeMove(), bank.canAfford(courier.getMoveCost()), "feather", accent,
+                lift ? UPGRADE_CARD_LIFT_MOVE_ART : UPGRADE_CARD_RUNNER_MOVE_ART);
         drawBirdUpgradeCard(g, optionTwo, "PICKUP", "Loads faster", "Lv. " + courier.getPickupLevel() + "/" + courier.getMaxStatLevel(),
-                courier.canUpgradePickup() ? courier.getPickupCost() : 0, courier.canUpgradePickup(), bank.canAfford(courier.getPickupCost()), "clock", accent);
+                courier.canUpgradePickup() ? courier.getPickupCost() : 0, courier.canUpgradePickup(), bank.canAfford(courier.getPickupCost()), "clock", accent,
+                lift ? UPGRADE_CARD_LIFT_PICKUP_ART : UPGRADE_CARD_RUNNER_PICKUP_ART);
         drawBirdUpgradeCard(g, optionThree, "CAPACITY", "Carries more gems", "Lv. " + courier.getCapacityLevel() + "/" + courier.getMaxStatLevel(),
-                courier.canUpgradeCapacity() ? courier.getCapacityCost() : 0, courier.canUpgradeCapacity(), bank.canAfford(courier.getCapacityCost()), "box", accent);
+                courier.canUpgradeCapacity() ? courier.getCapacityCost() : 0, courier.canUpgradeCapacity(), bank.canAfford(courier.getCapacityCost()), "box", accent,
+                lift ? UPGRADE_CARD_LIFT_CAPACITY_ART : UPGRADE_CARD_RUNNER_CAPACITY_ART);
     }
 
     private void drawBirdSummary(Graphics2D g, int x, int y, Bird bird, Mine mine, Image art, Color accent) {
-        drawPanelIcon(g, "bird", x, y - 12, 34, accent, true);
+        drawSmallBirdSummaryIcon(g, art, x + 2, y - 7, 34, 34, accent);
         g.setFont(new Font("Serif", Font.BOLD, 23));
         g.setColor(new Color(255, 229, 182));
         g.drawString(bird.getName() + " level " + bird.getProgressLevel() + "/15", x + 48, y + 8);
@@ -2078,37 +2106,186 @@ public class GamePanel extends JPanel {
         g.setColor(new Color(accent.getRed(), accent.getGreen(), accent.getBlue(), 70));
         g.fillOval(x + 6, y + 10, w - 12, h - 12);
         if (art != null) {
-            int imgW = w;
-            int imgH = h + 12;
-            g.drawImage(art, x - 4, y - 8, imgW, imgH, null);
+            drawImageContain(g, art, x - 9, y - 13, w + 18, h + 18);
         } else {
             drawPanelIcon(g, "bird", x + 18, y + 14, 42, accent, true);
         }
     }
 
-    private void drawBirdUpgradeCard(Graphics2D g, Button button, String title, String description, String level, int cost, boolean upgradeable, boolean affordable, String icon, Color accent) {
-        boolean enabled = upgradeable && affordable;
-        g.setColor(new Color(5, 24, 36, 230));
-        g.fillRoundRect(button.x, button.y, button.width, button.height, 16, 16);
-        g.setColor(new Color(202, 139, 50, 230));
-        g.setStroke(new BasicStroke(2));
-        g.drawRoundRect(button.x, button.y, button.width, button.height, 16, 16);
-        g.setColor(new Color(accent.getRed(), accent.getGreen(), accent.getBlue(), 85));
-        g.drawRoundRect(button.x + 5, button.y + 5, button.width - 10, button.height - 10, 13, 13);
-        g.setStroke(new BasicStroke(1));
+    private void drawSmallBirdSummaryIcon(Graphics2D g, Image art, int x, int y, int w, int h, Color accent) {
+        g.setColor(new Color(0, 0, 0, 105));
+        g.fillOval(x + 5, y + h - 10, w - 10, 12);
+        g.setColor(new Color(accent.getRed(), accent.getGreen(), accent.getBlue(), 80));
+        g.fillOval(x + 5, y + 3, w - 10, h - 9);
+        if (art != null) {
+            drawImageContain(g, art, x - 7, y - 8, w + 14, h + 13);
+        } else {
+            drawPanelIcon(g, "bird", x + 4, y + 4, w - 8, accent, true);
+        }
+    }
 
-        drawWoodPlaque(g, button.x + 30, button.y + 14, button.width - 60, 40, title);
-        drawIconMedallion(g, icon, button.x + button.width / 2, button.y + 88, accent, upgradeable);
+    private void drawBirdUpgradeCard(Graphics2D g, Button button, String title, String description, String level, int cost, boolean upgradeable, boolean affordable, String icon, Color accent, Image cardArt) {
+        if (cardArt != null) {
+            drawImageUpgradeCard(g, button, title, description, level, cost, upgradeable, affordable, accent, cardArt);
+            return;
+        }
+        boolean enabled = upgradeable && affordable;
+        g.setColor(new Color(0, 0, 0, 130));
+        g.fillRoundRect(button.x + 5, button.y + 6, button.width, button.height, 18, 18);
+
+        GradientPaint frame = new GradientPaint(button.x, button.y,
+                new Color(237, 172, 68, 240),
+                button.x, button.y + button.height,
+                new Color(87, 48, 22, 240));
+        g.setPaint(frame);
+        g.fillRoundRect(button.x, button.y, button.width, button.height, 18, 18);
+
+        GradientPaint panel = new GradientPaint(button.x, button.y + 8,
+                upgradeable ? new Color(3, 47, 63, 240) : new Color(33, 36, 42, 240),
+                button.x, button.y + button.height - 8,
+                upgradeable ? new Color(1, 21, 31, 242) : new Color(17, 18, 22, 242));
+        g.setPaint(panel);
+        g.fillRoundRect(button.x + 6, button.y + 6, button.width - 12, button.height - 12, 15, 15);
+
+        g.setColor(new Color(accent.getRed(), accent.getGreen(), accent.getBlue(), upgradeable ? 115 : 45));
+        g.setStroke(new BasicStroke(2));
+        g.drawRoundRect(button.x + 13, button.y + 13, button.width - 26, button.height - 26, 13, 13);
+        g.setColor(new Color(255, 218, 112, 95));
+        g.setStroke(new BasicStroke(1));
+        g.drawRoundRect(button.x + 18, button.y + 18, button.width - 36, button.height - 36, 11, 11);
+
+        drawLeafSprig(g, button.x + 39, button.y + 60, true, upgradeable ? new Color(109, 151, 46) : new Color(68, 74, 58));
+        drawLeafSprig(g, button.x + button.width - 39, button.y + 60, false, upgradeable ? new Color(109, 151, 46) : new Color(68, 74, 58));
+        drawWoodPlaque(g, button.x + 34, button.y + 15, button.width - 68, 39, title);
+        drawIconMedallion(g, icon, button.x + button.width / 2, button.y + 94, accent, upgradeable);
 
         g.setFont(new Font("Serif", Font.BOLD, 20));
         g.setColor(new Color(255, 228, 177));
-        drawCentered(g, description, button.x + button.width / 2, button.y + 134);
+        drawCentered(g, description, button.x + button.width / 2, button.y + 148);
         g.setFont(new Font("Serif", Font.BOLD, 21));
         g.setColor(new Color(255, 197, 68));
-        drawCentered(g, level, button.x + button.width / 2, button.y + 158);
+        drawCentered(g, level, button.x + button.width / 2, button.y + 172);
 
-        drawCostPill(g, button.x + 28, button.y + button.height - 43, button.width - 56, 35,
+        g.setColor(new Color(226, 161, 55, 190));
+        int lineY = button.y + 178;
+        g.drawLine(button.x + 70, lineY, button.x + 106, lineY);
+        g.drawLine(button.x + button.width - 106, lineY, button.x + button.width - 70, lineY);
+        g.drawRect(button.x + button.width / 2 - 4, lineY - 4, 8, 8);
+
+        drawCostPill(g, button.x + 32, button.y + button.height - 42, button.width - 64, 35,
                 upgradeable ? String.valueOf(cost) + " gems" : "MAX LEVEL", enabled || !upgradeable);
+    }
+
+    private void drawImageUpgradeCard(Graphics2D g, Button button, String title, String description, String level,
+                                      int cost, boolean upgradeable, boolean affordable, Color accent, Image cardArt) {
+        boolean enabled = upgradeable && affordable;
+        g.setColor(new Color(0, 0, 0, 145));
+        g.fillRoundRect(button.x + 6, button.y + 7, button.width, button.height, 20, 20);
+
+        Shape oldClip = g.getClip();
+        RoundRectangle2D roundedCard = new RoundRectangle2D.Double(button.x, button.y, button.width, button.height, 20, 20);
+        g.setClip(roundedCard);
+        GradientPaint panel = new GradientPaint(button.x, button.y + 5,
+                upgradeable ? new Color(4, 49, 65, 245) : new Color(33, 36, 42, 245),
+                button.x, button.y + button.height - 8,
+                upgradeable ? new Color(1, 18, 27, 248) : new Color(17, 18, 22, 248));
+        g.setPaint(panel);
+        g.fillRoundRect(button.x, button.y, button.width, button.height, 20, 20);
+        drawImageRegionCover(g, cardArt, 0.02, 0.48, button.x + 8, button.y + 8, button.width - 16, 126);
+        g.setColor(new Color(0, 11, 18, upgradeable ? 15 : 115));
+        g.fillRoundRect(button.x, button.y, button.width, button.height, 20, 20);
+        g.setClip(oldClip);
+
+        GradientPaint frame = new GradientPaint(button.x, button.y,
+                upgradeable ? new Color(255, 205, 83, 230) : new Color(116, 108, 94, 230),
+                button.x, button.y + button.height,
+                upgradeable ? new Color(107, 58, 25, 235) : new Color(49, 49, 50, 235));
+        g.setPaint(frame);
+        g.setStroke(new BasicStroke(3));
+        g.drawRoundRect(button.x + 1, button.y + 1, button.width - 2, button.height - 2, 20, 20);
+        g.setStroke(new BasicStroke(1));
+        g.setColor(new Color(accent.getRed(), accent.getGreen(), accent.getBlue(), upgradeable ? 105 : 35));
+        g.drawRoundRect(button.x + 10, button.y + 10, button.width - 20, button.height - 20, 15, 15);
+
+        drawLeafSprig(g, button.x + 40, button.y + 144, true, upgradeable ? new Color(109, 151, 46) : new Color(68, 74, 58));
+        drawLeafSprig(g, button.x + button.width - 40, button.y + 144, false, upgradeable ? new Color(109, 151, 46) : new Color(68, 74, 58));
+
+        g.setFont(new Font("Serif", Font.BOLD, 18));
+        g.setColor(new Color(0, 0, 0, 145));
+        drawCentered(g, description, button.x + button.width / 2 + 2, button.y + 153);
+        g.setColor(new Color(255, 230, 182));
+        drawCentered(g, description, button.x + button.width / 2, button.y + 151);
+
+        g.setFont(new Font("Serif", Font.BOLD, 20));
+        g.setColor(new Color(0, 0, 0, 145));
+        drawCentered(g, level, button.x + button.width / 2 + 2, button.y + 179);
+        g.setColor(new Color(255, 199, 55));
+        drawCentered(g, level, button.x + button.width / 2, button.y + 177);
+
+        int lineY = button.y + 184;
+        g.setColor(new Color(232, 162, 47, 185));
+        g.drawLine(button.x + 68, lineY, button.x + 104, lineY);
+        g.drawLine(button.x + button.width - 104, lineY, button.x + button.width - 68, lineY);
+        g.drawRect(button.x + button.width / 2 - 4, lineY - 4, 8, 8);
+
+        drawCostPill(g, button.x + 28, button.y + button.height - 43, button.width - 56, 36,
+                upgradeable ? String.valueOf(cost) + " gems" : "MAX LEVEL", enabled || !upgradeable);
+    }
+
+    private void drawImageCover(Graphics2D g, Image image, int x, int y, int w, int h) {
+        int imageW = image.getWidth(null);
+        int imageH = image.getHeight(null);
+        if (imageW <= 0 || imageH <= 0 || w <= 0 || h <= 0) {
+            return;
+        }
+
+        double scale = Math.max(w / (double) imageW, h / (double) imageH);
+        int sourceW = Math.max(1, (int) Math.round(w / scale));
+        int sourceH = Math.max(1, (int) Math.round(h / scale));
+        int sourceX = Math.max(0, (imageW - sourceW) / 2);
+        int sourceY = Math.max(0, (imageH - sourceH) / 2);
+
+        g.drawImage(image,
+                x, y, x + w, y + h,
+                sourceX, sourceY, Math.min(imageW, sourceX + sourceW), Math.min(imageH, sourceY + sourceH),
+                null);
+    }
+
+    private void drawImageRegionCover(Graphics2D g, Image image, double sourceTop, double sourceBottom,
+                                      int x, int y, int w, int h) {
+        int imageW = image.getWidth(null);
+        int imageH = image.getHeight(null);
+        if (imageW <= 0 || imageH <= 0 || w <= 0 || h <= 0) {
+            return;
+        }
+
+        int regionY = (int) Math.round(imageH * sourceTop);
+        int regionH = Math.max(1, (int) Math.round(imageH * (sourceBottom - sourceTop)));
+        double scale = Math.max(w / (double) imageW, h / (double) regionH);
+        int sourceW = Math.max(1, (int) Math.round(w / scale));
+        int sourceH = Math.max(1, (int) Math.round(h / scale));
+        int sourceX = Math.max(0, (imageW - sourceW) / 2);
+        int sourceY = Math.max(regionY, regionY + (regionH - sourceH) / 2);
+
+        g.drawImage(image,
+                x, y, x + w, y + h,
+                sourceX, sourceY, Math.min(imageW, sourceX + sourceW), Math.min(imageH, sourceY + sourceH),
+                null);
+    }
+
+    private void drawImageContain(Graphics2D g, Image image, int x, int y, int w, int h) {
+        int imageW = image.getWidth(null);
+        int imageH = image.getHeight(null);
+        if (imageW <= 0 || imageH <= 0 || w <= 0 || h <= 0) {
+            return;
+        }
+
+        double scale = Math.min(w / (double) imageW, h / (double) imageH);
+        int drawW = (int) Math.round(imageW * scale);
+        int drawH = (int) Math.round(imageH * scale);
+        int drawX = x + (w - drawW) / 2;
+        int drawY = y + (h - drawH) / 2;
+        g.drawImage(image, drawX, drawY, drawW, drawH, null);
     }
 
     private void drawAutoMineCard(Graphics2D g, Button button, Bird bird, Mine mine) {
@@ -2119,30 +2296,135 @@ public class GamePanel extends JPanel {
 
     private void drawGreenBirdCard(Graphics2D g, Button button, Mine mine, boolean owned, boolean ready) {
         if (owned) {
-            drawWideFeatureCard(g, button, selectedGreenBird ? "BLUE BIRD" : "GREEN BIRD", "Switch the selected mine bird",
-                    selectedGreenBird ? "TAP TO BLUE" : "TAP TO GREEN", "bird", true, false, new Color(105, 230, 120));
+            drawBirdSwitchFeatureCard(g, button, selectedGreenBird ? "BLUE BIRD" : "GREEN BIRD", "Switch the selected mine bird",
+                    selectedGreenBird ? "TAP TO BLUE" : "TAP TO GREEN", selectedGreenBird ? UPGRADE_BLUE_BIRD_ART : UPGRADE_GREEN_BIRD_ART,
+                    true, new Color(105, 230, 120));
             return;
         }
 
         if (ready) {
-            drawWideFeatureCard(g, button, "GREEN BIRD AVAILABLE", "A new bird joins your team!",
-                    "TAP TO UNLOCK", "bird", bank.canAfford(mine.getGreenBirdCost()), false, new Color(105, 230, 120));
+            drawBirdSwitchFeatureCard(g, button, "GREEN BIRD AVAILABLE", "A new bird joins your team!",
+                    "TAP TO UNLOCK", UPGRADE_GREEN_BIRD_ART, bank.canAfford(mine.getGreenBirdCost()), new Color(105, 230, 120));
             return;
         }
 
-        drawWideFeatureCard(g, button, "UNLOCK GREEN BIRD", "Needs blue L15",
-                "LOCKED", "lock", false, false, new Color(150, 150, 145));
+        drawLockedGreenBirdCard(g, button);
+    }
+
+    private void drawBirdSwitchFeatureCard(Graphics2D g, Button button, String title, String subtitle, String value,
+                                           Image birdArt, boolean enabled, Color accent) {
+        boolean active = enabled;
+        g.setColor(new Color(0, 0, 0, 115));
+        g.fillRoundRect(button.x + 5, button.y + 6, button.width, button.height, 16, 16);
+        GradientPaint frame = new GradientPaint(button.x, button.y,
+                active ? new Color(83, 225, 247) : new Color(126, 116, 95),
+                button.x, button.y + button.height,
+                active ? new Color(13, 88, 125) : new Color(51, 46, 43));
+        g.setPaint(frame);
+        g.fillRoundRect(button.x, button.y, button.width, button.height, 16, 16);
+        GradientPaint inner = new GradientPaint(button.x, button.y + 5,
+                active ? new Color(5, 77, 83, 236) : new Color(34, 35, 39, 236),
+                button.x, button.y + button.height - 5,
+                active ? new Color(3, 35, 49, 238) : new Color(19, 20, 24, 238));
+        g.setPaint(inner);
+        g.fillRoundRect(button.x + 5, button.y + 5, button.width - 10, button.height - 10, 13, 13);
+
+         drawTinyNest(g, button.x + 29, button.y + 55, 74, accent, active);
+        if (birdArt != null) {
+            drawImageContain(g, birdArt, button.x + 25, button.y + 3, 78, 70);
+        }
+
+        g.setFont(new Font("Serif", Font.BOLD, 21));
+        g.setColor(new Color(255, 232, 185));
+        g.drawString(title, button.x + 118, button.y + 30);
+        g.setFont(new Font("Serif", Font.BOLD, 16));
+        g.setColor(Color.WHITE);
+        g.drawString(subtitle, button.x + 118, button.y + 52);
+
+        int pillW = Math.min(178, button.width - 220);
+        if (pillW > 92) {
+            drawCostPill(g, button.x + button.width - pillW - 18, button.y + 44, pillW, 30, value, enabled);
+        }
+    }
+
+    private void drawLockedGreenBirdCard(Graphics2D g, Button button) {
+        g.setColor(new Color(0, 0, 0, 115));
+        g.fillRoundRect(button.x + 5, button.y + 6, button.width, button.height, 16, 16);
+        GradientPaint frame = new GradientPaint(button.x, button.y, new Color(126, 116, 95),
+                button.x, button.y + button.height, new Color(51, 46, 43));
+        g.setPaint(frame);
+        g.fillRoundRect(button.x, button.y, button.width, button.height, 16, 16);
+        GradientPaint inner = new GradientPaint(button.x, button.y + 5, new Color(34, 35, 39, 236),
+                button.x, button.y + button.height - 5, new Color(19, 20, 24, 238));
+        g.setPaint(inner);
+        g.fillRoundRect(button.x + 5, button.y + 5, button.width - 10, button.height - 10, 13, 13);
+
+        drawLockedNestIcon(g, button.x + 28, button.y + 13, 68);
+        g.setFont(new Font("Serif", Font.BOLD, 21));
+        g.setColor(new Color(255, 232, 185));
+        g.drawString("UNLOCK GREEN BIRD", button.x + 118, button.y + 30);
+        g.setFont(new Font("Serif", Font.BOLD, 16));
+        g.setColor(Color.WHITE);
+        g.drawString("Needs blue L15", button.x + 118, button.y + 52);
+        drawPanelIcon(g, "feather", button.x + button.width - 74, button.y + 16, 54, new Color(150, 150, 145), false);
+
+        int pillW = Math.min(178, button.width - 220);
+        if (pillW > 92) {
+            drawCostPill(g, button.x + button.width - pillW - 18, button.y + 44, pillW, 30, "LOCKED", false);
+        }
+    }
+
+    private void drawTinyNest(Graphics2D g, int x, int y, int w, Color accent, boolean enabled) {
+        int h = Math.max(22, w / 3);
+        g.setColor(new Color(0, 0, 0, 110));
+        g.fillOval(x + 4, y + h - 9, w - 8, h / 2);
+        g.setColor(enabled ? new Color(86, 51, 24) : new Color(57, 51, 43));
+        g.fillOval(x + 5, y, w - 10, h);
+        g.setColor(enabled ? new Color(164, 99, 40) : new Color(96, 86, 72));
+        g.setStroke(new BasicStroke(2));
+        for (int i = 0; i < 4; i++) {
+            g.drawArc(x + 6 + i * 5, y - 8 + i * 3, w - 12 - i * 10, h + 9, 190, 160);
+        }
+        g.setColor(new Color(accent.getRed(), accent.getGreen(), accent.getBlue(), enabled ? 170 : 70));
+        g.drawArc(x + 14, y - 2, w - 28, h / 2 + 8, 195, 150);
+        g.setStroke(new BasicStroke(1));
+    }
+
+    private void drawLockedNestIcon(Graphics2D g, int x, int y, int size) {
+        drawTinyNest(g, x, y + size - 28, size, new Color(150, 150, 145), false);
+        int lockX = x + size / 2 - 18;
+        int lockY = y + 9;
+        g.setColor(new Color(0, 0, 0, 105));
+        g.fillRoundRect(lockX + 2, lockY + 22, 36, 28, 7, 7);
+        g.setColor(new Color(168, 171, 168));
+        g.setStroke(new BasicStroke(4));
+        g.drawRoundRect(lockX + 7, lockY + 4, 23, 27, 16, 16);
+        g.setStroke(new BasicStroke(1));
+        g.fillRoundRect(lockX, lockY + 21, 38, 30, 7, 7);
+        g.setColor(new Color(38, 42, 45));
+        g.fillOval(lockX + 16, lockY + 31, 7, 7);
+        g.fillRect(lockX + 18, lockY + 36, 3, 8);
     }
 
     private void drawWideFeatureCard(Graphics2D g, Button button, String title, String subtitle, String value, String icon, boolean enabled, boolean purchased, Color accent) {
-        g.setColor(enabled || purchased ? new Color(5, 60, 63, 230) : new Color(32, 34, 39, 232));
+        boolean active = enabled || purchased;
+        g.setColor(new Color(0, 0, 0, 115));
+        g.fillRoundRect(button.x + 5, button.y + 6, button.width, button.height, 16, 16);
+        GradientPaint frame = new GradientPaint(button.x, button.y,
+                active ? new Color(83, 225, 247) : new Color(126, 116, 95),
+                button.x, button.y + button.height,
+                active ? new Color(13, 88, 125) : new Color(51, 46, 43));
+        g.setPaint(frame);
         g.fillRoundRect(button.x, button.y, button.width, button.height, 16, 16);
-        g.setColor(enabled || purchased ? accent : new Color(117, 108, 97));
-        g.setStroke(new BasicStroke(2));
-        g.drawRoundRect(button.x, button.y, button.width, button.height, 16, 16);
-        g.setStroke(new BasicStroke(1));
+        GradientPaint inner = new GradientPaint(button.x, button.y + 5,
+                active ? new Color(5, 77, 83, 236) : new Color(34, 35, 39, 236),
+                button.x, button.y + button.height - 5,
+                active ? new Color(3, 35, 49, 238) : new Color(19, 20, 24, 238));
+        g.setPaint(inner);
+        g.fillRoundRect(button.x + 5, button.y + 5, button.width - 10, button.height - 10, 13, 13);
 
-        drawPanelIcon(g, icon, button.x + 25, button.y + 14, 52, accent, enabled || purchased);
+        drawLeafSprig(g, button.x + 28, button.y + button.height - 16, true, active ? new Color(103, 152, 54) : new Color(73, 79, 65));
+        drawPanelIcon(g, icon, button.x + 28, button.y + 15, 51, accent, active);
         g.setFont(new Font("Serif", Font.BOLD, 21));
         g.setColor(new Color(255, 232, 185));
         g.drawString(title, button.x + 94, button.y + 30);
@@ -2161,72 +2443,136 @@ public class GamePanel extends JPanel {
     }
 
     private void drawWoodPlaque(Graphics2D g, int x, int y, int w, int h, String title) {
-        GradientPaint plaque = new GradientPaint(x, y, new Color(114, 66, 32), x, y + h, new Color(55, 32, 19));
+        g.setColor(new Color(0, 0, 0, 100));
+        g.fillRoundRect(x + 3, y + 4, w, h, 14, 14);
+        GradientPaint plaque = new GradientPaint(x, y, new Color(139, 82, 39), x, y + h, new Color(65, 36, 20));
         g.setPaint(plaque);
-        g.fillRoundRect(x, y, w, h, 17, 17);
-        g.setColor(new Color(226, 166, 73));
+        g.fillRoundRect(x, y, w, h, 14, 14);
+        g.setColor(new Color(250, 183, 81));
         g.drawRoundRect(x, y, w, h, 17, 17);
-        g.setFont(new Font("Serif", Font.BOLD, 23));
+        g.setColor(new Color(255, 231, 155, 95));
+        g.drawLine(x + 15, y + 7, x + w - 15, y + 7);
+        g.setFont(new Font("Serif", Font.BOLD, 24));
+        g.setColor(new Color(0, 0, 0, 130));
+        drawCentered(g, title, x + w / 2 + 2, y + 28);
         g.setColor(new Color(255, 235, 189));
         drawCentered(g, title, x + w / 2, y + 27);
     }
 
     private void drawIconMedallion(Graphics2D g, String icon, int centerX, int centerY, Color accent, boolean enabled) {
-        g.setColor(enabled ? new Color(accent.getRed(), accent.getGreen(), accent.getBlue(), 70) : new Color(70, 72, 75, 120));
-        g.fillOval(centerX - 48, centerY - 48, 96, 96);
-        g.setColor(new Color(202, 139, 50, 230));
-        g.setStroke(new BasicStroke(3));
-        g.drawOval(centerX - 48, centerY - 48, 96, 96);
+        g.setColor(new Color(0, 0, 0, 125));
+        g.fillOval(centerX - 46, centerY - 43, 92, 88);
+        GradientPaint outer = new GradientPaint(centerX - 50, centerY - 50,
+                enabled ? new Color(237, 176, 66) : new Color(113, 105, 91),
+                centerX + 50, centerY + 50,
+                enabled ? new Color(85, 48, 24) : new Color(50, 50, 50));
+        g.setPaint(outer);
+        g.fillOval(centerX - 44, centerY - 44, 88, 88);
+        g.setColor(enabled ? new Color(accent.getRed(), accent.getGreen(), accent.getBlue(), 78) : new Color(60, 64, 69, 160));
+        g.fillOval(centerX - 36, centerY - 36, 72, 72);
+        g.setColor(new Color(255, 235, 142, 135));
+        g.setStroke(new BasicStroke(2));
+        g.drawOval(centerX - 35, centerY - 35, 70, 70);
         g.setStroke(new BasicStroke(1));
-        drawPanelIcon(g, icon, centerX - 33, centerY - 33, 66, accent, enabled);
+
+        drawLeafSprig(g, centerX - 47, centerY + 24, true, enabled ? new Color(105, 151, 52) : new Color(70, 75, 62));
+        drawLeafSprig(g, centerX + 47, centerY + 24, false, enabled ? new Color(105, 151, 52) : new Color(70, 75, 62));
+        drawPanelIcon(g, icon, centerX - 29, centerY - 29, 58, accent, enabled);
     }
 
     private void drawCostPill(Graphics2D g, int x, int y, int w, int h, String text, boolean enabled) {
+        g.setColor(new Color(0, 0, 0, 110));
+        g.fillRoundRect(x + 3, y + 4, w, h, 12, 12);
         GradientPaint paint = new GradientPaint(x, y,
                 enabled ? new Color(137, 207, 58) : new Color(93, 100, 99),
                 x, y + h,
                 enabled ? new Color(50, 148, 44) : new Color(57, 61, 62));
         g.setPaint(paint);
         g.fillRoundRect(x, y, w, h, 11, 11);
-        g.setColor(enabled ? new Color(212, 255, 158) : new Color(130, 135, 135));
+        g.setColor(enabled ? new Color(232, 255, 172) : new Color(130, 135, 135));
         g.drawRoundRect(x, y, w, h, 11, 11);
+        g.setColor(new Color(255, 255, 255, enabled ? 80 : 28));
+        g.drawLine(x + 12, y + 6, x + w - 12, y + 6);
         if (!text.toUpperCase().contains("MAX") && !text.toUpperCase().contains("LOCK") && !text.toUpperCase().contains("ENABLED") && !text.toUpperCase().contains("TAP")) {
-            drawGem(g, x + 18, y + 7, 21, new Color(96, 238, 255));
-            g.setFont(new Font("Serif", Font.BOLD, 21));
+            drawGem(g, x + 20, y + 8, Math.max(20, h - 13), new Color(96, 238, 255));
+            g.setFont(new Font("Serif", Font.BOLD, Math.max(19, h - 14)));
+            g.setColor(new Color(0, 0, 0, 105));
+            g.drawString(text, x + 54, y + h - 12 + 2);
             g.setColor(Color.WHITE);
-            g.drawString(text, x + 49, y + 25);
+            g.drawString(text, x + 52, y + h - 12);
         } else {
             g.setFont(new Font("Serif", Font.BOLD, 20));
+            g.setColor(new Color(0, 0, 0, 110));
+            drawCentered(g, text, x + w / 2 + 2, y + h - 10 + 2);
             g.setColor(Color.WHITE);
-            drawCentered(g, text, x + w / 2, y + 25);
+            drawCentered(g, text, x + w / 2, y + h - 10);
         }
     }
 
     private void drawPanelIcon(Graphics2D g, String icon, int x, int y, int size, Color accent, boolean enabled) {
         Color main = enabled ? new Color(255, 229, 106) : new Color(145, 145, 140);
         if ("feather".equals(icon)) {
-            g.setColor(enabled ? new Color(222, 250, 255) : main);
-            g.fillOval(x + size / 4, y + 2, size / 2, size - 5);
-            g.setColor(accent);
-            g.drawLine(x + size / 2, y + 4, x + size / 5, y + size - 4);
-            g.drawLine(x + size / 2 - 1, y + size / 3, x + size - 6, y + size / 4);
-            g.drawLine(x + size / 2 - 7, y + size / 2, x + size - 9, y + size / 2);
-        } else if ("nest".equals(icon) || "egg".equals(icon)) {
-            g.setColor(new Color(116, 70, 33));
-            g.fillOval(x + 3, y + size / 2, size - 6, size / 3);
-            g.setColor(new Color(176, 108, 44));
-            g.drawArc(x + 3, y + size / 2 - 7, size - 6, size / 2, 180, 180);
-            if ("egg".equals(icon)) {
-                g.setColor(accent);
-                g.fillOval(x + size / 2 - 9, y + 8, 18, 26);
-            } else {
-                drawGem(g, x + size / 2 - 12, y + size / 2 - 7, 20, accent);
+            Shape oldClip = g.getClip();
+            g.setColor(enabled ? new Color(236, 252, 255) : main);
+            int[] xs = {x + size / 2, x + size - 10, x + size / 2 + 5, x + 10};
+            int[] ys = {y + 3, y + size / 4, y + size - 6, y + size / 2};
+            g.fillPolygon(xs, ys, 4);
+            g.setClip(new java.awt.Polygon(xs, ys, 4));
+            GradientPaint feather = new GradientPaint(x, y, enabled ? Color.WHITE : main,
+                    x + size, y + size, enabled ? accent : new Color(115, 116, 112));
+            g.setPaint(feather);
+            g.fillRect(x, y, size, size);
+            g.setClip(oldClip);
+            g.setColor(enabled ? new Color(205, 248, 255) : new Color(104, 107, 103));
+            g.setStroke(new BasicStroke(Math.max(2, size / 23)));
+            g.drawLine(x + size / 2 + 1, y + 6, x + size / 4, y + size - 6);
+            g.drawLine(x + size / 2, y + size / 3, x + size - 9, y + size / 4);
+            g.drawLine(x + size / 2 - 4, y + size / 2, x + size - 11, y + size / 2 - 1);
+            g.drawLine(x + size / 2 - 9, y + size * 2 / 3, x + size - 18, y + size * 2 / 3);
+            g.setStroke(new BasicStroke(1));
+        } else if ("plainNest".equals(icon)) {
+            g.setColor(new Color(63, 37, 18));
+            g.fillOval(x + 2, y + size / 2, size - 4, size / 3);
+            g.setColor(new Color(158, 96, 40));
+            g.drawArc(x + 3, y + size / 2 - 7, size - 6, size / 2, 190, 160);
+            g.drawArc(x + 6, y + size / 2 - 2, size - 12, size / 3, 190, 160);
+        } else if ("egg".equals(icon)) {
+            drawTinyNest(g, x + 1, y + size / 2 + 2, size - 2, accent, enabled);
+            GradientPaint egg = new GradientPaint(x + size / 2, y + 4,
+                    new Color(125, 232, 255),
+                    x + size / 2, y + size / 2 + 16,
+                    new Color(25, 115, 205));
+            g.setPaint(egg);
+            g.fillOval(x + size / 2 - size / 5, y + 4, size * 2 / 5, size * 3 / 5);
+            g.setColor(new Color(9, 75, 160, 145));
+            g.fillOval(x + size / 2 - 6, y + size / 3, 5, 5);
+            g.fillOval(x + size / 2 + 5, y + size / 2 - 4, 6, 5);
+            g.fillOval(x + size / 2 - 3, y + size / 2 + 5, 5, 4);
+            g.setColor(new Color(255, 255, 255, 125));
+            g.fillOval(x + size / 2 - size / 9, y + 10, size / 9, size / 5);
+        } else if ("nest".equals(icon)) {
+            g.setColor(new Color(65, 38, 19));
+            g.fillOval(x + 4, y + size / 2 - 1, size - 8, size / 3 + 5);
+            g.setColor(new Color(151, 91, 38));
+            for (int i = 0; i < 4; i++) {
+                g.drawArc(x + 4 + i * 3, y + size / 2 - 11 + i * 3, size - 8 - i * 6, size / 2, 190, 160);
             }
+            g.setColor(new Color(206, 143, 56));
+            g.drawArc(x + 7, y + size / 2 - 6, size - 14, size / 3, 190, 160);
+            drawGem(g, x + size / 2 - 19, y + size / 2 - 12, 22, accent);
+            drawGem(g, x + size / 2 + 2, y + size / 2 - 16, 19, accent);
+            drawGem(g, x + size / 2 - 2, y + size / 2 - 30, 23, accent);
         } else if ("pickaxe".equals(icon)) {
-            g.setColor(new Color(126, 84, 47));
-            g.setStroke(new BasicStroke(5));
-            g.drawLine(x + 14, y + size - 10, x + size - 14, y + 12);
-            g.setColor(new Color(210, 217, 222));
+            g.setColor(new Color(20, 64, 84, 170));
+            g.fillOval(x + size / 2 - 20, y + size / 2 - 15, 42, 42);
+            g.setColor(enabled ? new Color(90, 210, 244) : new Color(117, 120, 122));
+            g.drawLine(x + size / 2, y + size / 2 + 5, x + size / 2, y + size / 2 - 8);
+            g.drawLine(x + size / 2, y + size / 2 + 5, x + size / 2 + 11, y + size / 2 + 5);
+            g.setColor(new Color(132, 86, 48));
+            g.setStroke(new BasicStroke(Math.max(4, size / 13)));
+            g.drawLine(x + 15, y + size - 11, x + size - 14, y + 13);
+            g.setColor(enabled ? new Color(221, 228, 232) : main);
+            g.setStroke(new BasicStroke(Math.max(4, size / 14)));
             g.drawLine(x + size / 2, y + 10, x + size - 5, y + 25);
             g.drawLine(x + size / 2, y + 10, x + 14, y + 23);
             g.setStroke(new BasicStroke(1));
@@ -2259,6 +2605,20 @@ public class GamePanel extends JPanel {
             g.setColor(new Color(255, 214, 87));
             g.fillPolygon(new int[]{x + size - 15, x + size + 5, x + size - 15}, new int[]{y + size / 2 - 8, y + size / 2, y + size / 2 + 8}, 3);
         }
+    }
+
+    private void drawLeafSprig(Graphics2D g, int x, int y, boolean rightFacing, Color color) {
+        int dir = rightFacing ? 1 : -1;
+        g.setColor(new Color(57, 79, 31, 180));
+        g.setStroke(new BasicStroke(2));
+        g.drawLine(x, y, x + dir * 34, y - 18);
+        g.setColor(color);
+        for (int i = 0; i < 4; i++) {
+            int leafX = x + dir * (7 + i * 8);
+            int leafY = y - 4 - i * 4;
+            g.fillOval(leafX - 6, leafY - 6, 13, 8);
+        }
+        g.setStroke(new BasicStroke(1));
     }
 
     private void drawCloseButton(Graphics2D g, Button button) {
@@ -2489,11 +2849,11 @@ public class GamePanel extends JPanel {
             closePopup.setBounds(popupX + UPGRADE_POPUP_W - 72, popupY + 34, 44, 44);
 
             if (selection == Selection.MINE) {
-                optionOne.setBounds(popupX + 52, popupY + 255, 260, 210);
-                optionTwo.setBounds(popupX + 360, popupY + 255, 260, 210);
-                optionThree.setBounds(popupX + 668, popupY + 255, 260, 210);
-                optionFour.setBounds(popupX + 52, popupY + 492, 414, 82);
-                optionFive.setBounds(popupX + 506, popupY + 492, 422, 82);
+                optionOne.setBounds(popupX + 52, popupY + 245, 260, 226);
+                optionTwo.setBounds(popupX + 360, popupY + 245, 260, 226);
+                optionThree.setBounds(popupX + 668, popupY + 245, 260, 226);
+                optionFour.setBounds(popupX + 52, popupY + 498, 414, 82);
+                optionFive.setBounds(popupX + 506, popupY + 498, 422, 82);
             } else {
                 optionOne.setBounds(popupX + 52, popupY + 276, 260, 220);
                 optionTwo.setBounds(popupX + 360, popupY + 276, 260, 220);
