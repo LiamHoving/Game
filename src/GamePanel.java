@@ -36,16 +36,17 @@ public class GamePanel extends JPanel {
     private static final int HOME_NEST_DROP_X = TOWER_X + 84;
     private static final int HOME_NEST_DROP_Y = SURFACE_Y + 20;
     private static final int TOWER_W = 146;
-    private static final int MINE_VIEW_TOP = 270;
+    private static final int MINE_VIEW_TOP = 326;
     private static final int MINE_VIEW_BOTTOM = HEIGHT - 12;
     private static final int MINE_VIEW_RIGHT = 724;
-    private static final int NEW_MINE_CARD_X = 186;
-    private static final int NEW_MINE_CARD_W = 530;
-    private static final int NEW_MINE_CARD_H = 96;
-    private static final int BUY_MINE_PANEL_X = 724;
-    private static final int BUY_MINE_PANEL_Y = 248;
-    private static final int BUY_MINE_PANEL_W = 386;
-    private static final int BUY_MINE_PANEL_H = 302;
+    private static final int NEW_MINE_CARD_X = 178;
+    private static final int NEW_MINE_CARD_W = 520;
+    private static final int DESIGNED_NEW_MINE_CARD_H = 134;
+    private static final int GENERIC_NEW_MINE_CARD_H = 96;
+    private static final int BUY_MINE_PANEL_X = 760;
+    private static final int BUY_MINE_PANEL_Y = 350;
+    private static final int BUY_MINE_PANEL_W = 318;
+    private static final int BUY_MINE_PANEL_H = 248;
     private static final int UPGRADE_POPUP_X = 70;
     private static final int UPGRADE_POPUP_Y = 44;
     private static final int UPGRADE_POPUP_W = 980;
@@ -54,6 +55,7 @@ public class GamePanel extends JPanel {
     private static final Image SURFACE_BACKGROUND_ART = loadSprite("assets/surface_forest_background.png");
     private static final Image MINE_DIRT_BACKGROUND_ART = loadSprite("assets/mine_dirt_background.png");
     private static final Image MINE_BLEND_BACKGROUND_ART = loadSprite("assets/mine_blended_background.jpg");
+    private static final Image MINE_REFERENCE_DIRT_ART = loadSprite("assets/mine_reference_dirt.jpg");
     private static final Image OPEN_MINE_CARD_ART = loadSprite("assets/open_mine_card_design.png");
     private static final Image BUY_MINE_PANEL_ART = loadSprite("assets/buy_mine_panel_design.png");
     private static final Image MINE_ROW_ART = loadSprite("assets/mine_bird_row.png");
@@ -978,21 +980,19 @@ public class GamePanel extends JPanel {
             drawPaintedSurfaceBackground(g);
         }
 
-        if (MINE_BLEND_BACKGROUND_ART != null) {
-            if (MINE_DIRT_BACKGROUND_ART != null) {
-                g.drawImage(MINE_DIRT_BACKGROUND_ART, 0, MINE_VIEW_TOP, WIDTH, HEIGHT - MINE_VIEW_TOP, null);
-            } else {
-                g.setColor(new Color(93, 51, 34));
-                g.fillRect(0, MINE_VIEW_TOP, WIDTH, HEIGHT - MINE_VIEW_TOP);
-                drawPaintedMineBackground(g);
-            }
-            drawImageRegionStretch(g, MINE_BLEND_BACKGROUND_ART, 0.31, 0.385,
-                    0, MINE_VIEW_TOP - 30, WIDTH, 86);
-            drawMineBlendEdge(g);
-        } else if (MINE_DIRT_BACKGROUND_ART != null) {
+        if (MINE_DIRT_BACKGROUND_ART != null) {
             g.setColor(new Color(93, 51, 34));
             g.fillRect(0, MINE_VIEW_TOP, WIDTH, HEIGHT - MINE_VIEW_TOP);
-            g.drawImage(MINE_DIRT_BACKGROUND_ART, 0, MINE_VIEW_TOP, WIDTH, HEIGHT - MINE_VIEW_TOP, null);
+            drawImageCover(g, MINE_DIRT_BACKGROUND_ART, 0, MINE_VIEW_TOP, WIDTH, HEIGHT - MINE_VIEW_TOP);
+            drawMineBlendEdge(g);
+        } else if (MINE_REFERENCE_DIRT_ART != null) {
+            g.drawImage(MINE_REFERENCE_DIRT_ART, 0, MINE_VIEW_TOP, WIDTH, HEIGHT - MINE_VIEW_TOP, null);
+            drawMineBlendEdge(g);
+        } else if (MINE_BLEND_BACKGROUND_ART != null) {
+            g.setColor(new Color(93, 51, 34));
+            g.fillRect(0, MINE_VIEW_TOP, WIDTH, HEIGHT - MINE_VIEW_TOP);
+            drawPaintedMineBackground(g);
+            drawMineBlendEdge(g);
         } else {
             g.setColor(new Color(93, 51, 34));
             g.fillRect(0, MINE_VIEW_TOP, WIDTH, HEIGHT - MINE_VIEW_TOP);
@@ -1038,15 +1038,32 @@ public class GamePanel extends JPanel {
     }
 
     private void drawMineBlendEdge(Graphics2D g) {
-        GradientPaint softShadow = new GradientPaint(
-                0, MINE_VIEW_TOP + 10, new Color(32, 94, 38, 0),
-                0, MINE_VIEW_TOP + 74, new Color(75, 40, 27, 164)
+        GradientPaint forestToEarth = new GradientPaint(
+                0, MINE_VIEW_TOP - 28, new Color(61, 132, 45, 0),
+                0, MINE_VIEW_TOP + 30, new Color(76, 51, 30, 86)
         );
-        g.setPaint(softShadow);
-        g.fillRect(0, MINE_VIEW_TOP + 10, WIDTH, 64);
+        g.setPaint(forestToEarth);
+        g.fillRect(0, MINE_VIEW_TOP - 28, WIDTH, 58);
 
-        g.setColor(new Color(55, 29, 20, 76));
-        g.fillRect(0, MINE_VIEW_TOP + 72, WIDTH, HEIGHT - MINE_VIEW_TOP - 72);
+        g.setColor(new Color(33, 94, 34, 78));
+        int[] xs = new int[18];
+        int[] ys = new int[18];
+        for (int i = 0; i < 9; i++) {
+            xs[i] = i * (WIDTH / 8);
+            ys[i] = MINE_VIEW_TOP - 8 + (i % 3) * 3;
+        }
+        for (int i = 8; i >= 0; i--) {
+            xs[17 - i] = i * (WIDTH / 8);
+            ys[17 - i] = MINE_VIEW_TOP + 9 + ((i + 1) % 3) * 3;
+        }
+        g.fillPolygon(xs, ys, xs.length);
+
+        GradientPaint earthWash = new GradientPaint(
+                0, MINE_VIEW_TOP + 8, new Color(69, 44, 26, 48),
+                0, MINE_VIEW_TOP + 90, new Color(69, 44, 26, 0)
+        );
+        g.setPaint(earthWash);
+        g.fillRect(0, MINE_VIEW_TOP + 8, WIDTH, 90);
     }
 
     private void drawFloatingLeaves(Graphics2D g) {
@@ -1121,11 +1138,6 @@ public class GamePanel extends JPanel {
     }
 
     private void drawLiftTower(Graphics2D g) {
-        if (selection == Selection.LEAF_LIFT) {
-            g.setColor(new Color(255, 231, 100, 92));
-            g.fillRoundRect(47, 116, 90, MINE_VIEW_BOTTOM - 126, 18, 18);
-        }
-
         int x = 55;
         int y = 128;
         int w = 74;
@@ -1626,22 +1638,12 @@ public class GamePanel extends JPanel {
             int artW = 260;
             int artH = 217;
 
-            if (selection == Selection.NEST_RUNNER) {
-                g.setColor(new Color(255, 231, 100, 120));
-                g.fillRoundRect(artX - 8, artY - 8, artW + 16, artH + 66, 16, 16);
-            }
-
             g.drawImage(HOME_NEST_ART, artX, artY, artW, artH, null);
 
             g.setFont(new Font("Arial", Font.BOLD, 17));
             g.setColor(Color.WHITE);
             drawCentered(g, "Home Nest", x + TOWER_W / 2, y + 210);
             return;
-        }
-
-        if (selection == Selection.NEST_RUNNER) {
-            g.setColor(new Color(255, 231, 100, 120));
-            g.fillRoundRect(x - 8, y - 8, TOWER_W + 16, 474, 16, 16);
         }
 
         g.setColor(new Color(81, 47, 30));
@@ -1907,19 +1909,19 @@ public class GamePanel extends JPanel {
 
     private void drawNewMineCard(Graphics2D g) {
         int rawY = FIRST_MINE_FLOOR_Y + (mines.size() - 1) * MINE_ROW_GAP + 48;
+        int nextMine = mines.size() + 1;
+        int cost = getNewMineCost();
+        int h = getNewMineCardHeight(nextMine, cost);
         int y = screenY(rawY);
-        if (y < MINE_VIEW_TOP - NEW_MINE_CARD_H || y > MINE_VIEW_BOTTOM - 10) {
+        if (y < MINE_VIEW_TOP - h || y > MINE_VIEW_BOTTOM - 10) {
             return;
         }
 
         int x = NEW_MINE_CARD_X;
         int w = NEW_MINE_CARD_W;
-        int h = NEW_MINE_CARD_H;
-        int nextMine = mines.size() + 1;
-        int cost = getNewMineCost();
-        if (selection == Selection.ADD_MINE) {
-            g.setColor(new Color(255, 223, 83, 118));
-            g.fillRoundRect(x - 7, y - 7, w + 14, h + 14, 22, 22);
+        if (usesDesignedOpenMineCard(nextMine, cost)) {
+            drawDesignedOpenMineCard(g, x, y, w, h, nextMine, cost);
+            return;
         }
 
         g.setColor(new Color(18, 10, 22, 105));
@@ -1969,10 +1971,34 @@ public class GamePanel extends JPanel {
 
     private boolean newMineCardContains(int mouseX, int mouseY) {
         int rawY = FIRST_MINE_FLOOR_Y + (mines.size() - 1) * MINE_ROW_GAP + 48;
+        int h = getNewMineCardHeight(mines.size() + 1, getNewMineCost());
         int y = screenY(rawY);
         return mouseX >= NEW_MINE_CARD_X && mouseX <= NEW_MINE_CARD_X + NEW_MINE_CARD_W
-                && mouseY >= y && mouseY <= y + NEW_MINE_CARD_H
+                && mouseY >= y && mouseY <= y + h
                 && mouseY >= MINE_VIEW_TOP && mouseY <= MINE_VIEW_BOTTOM;
+    }
+
+    private int getNewMineCardHeight(int nextMine, int cost) {
+        return usesDesignedOpenMineCard(nextMine, cost) ? DESIGNED_NEW_MINE_CARD_H : GENERIC_NEW_MINE_CARD_H;
+    }
+
+    private boolean usesDesignedOpenMineCard(int nextMine, int cost) {
+        return OPEN_MINE_CARD_ART != null;
+    }
+
+    private void drawDesignedOpenMineCard(Graphics2D g, int x, int y, int w, int h, int nextMine, int cost) {
+        g.drawImage(OPEN_MINE_CARD_ART, x, y, w, h, null);
+        if (nextMine == 2 && cost == 1140) {
+            return;
+        }
+
+        drawOpenMineNumberBadge(g, x + 24, y + 28, 74, nextMine);
+
+        g.setColor(new Color(54, 16, 86, 246));
+        g.fillRoundRect(x + 98, y + 17, 255, 50, 13, 13);
+        drawGoldLabel(g, "Open Mine " + nextMine, x + 115, y + 55, 226, 34, 23);
+
+        drawOpenMinePriceButton(g, x + w - 170, y + 36, 140, 60, cost);
     }
 
     private void drawOpenMineNumberBadge(Graphics2D g, int x, int y, int size, int mineNumber) {
@@ -2868,13 +2894,34 @@ public class GamePanel extends JPanel {
         int y = BUY_MINE_PANEL_Y;
         int w = BUY_MINE_PANEL_W;
         int h = BUY_MINE_PANEL_H;
-        if (BUY_MINE_PANEL_ART != null && mines.size() + 1 == 2 && getNewMineCost() == 1140) {
-            drawImageContain(g, BUY_MINE_PANEL_ART, x, y, w, h);
+        if (BUY_MINE_PANEL_ART != null) {
+            drawDesignedBuyMinePanel(g, x, y, w, h, mines.size() + 1, getNewMineCost());
             return;
         }
 
         drawDarkGoldPanel(g, x, y, w, h, 18);
         drawAddMineContextPanel(g, x, y, w, h);
+    }
+
+    private void drawDesignedBuyMinePanel(Graphics2D g, int x, int y, int w, int h, int nextMine, int cost) {
+        g.drawImage(BUY_MINE_PANEL_ART, x, y, w, h, null);
+        if (nextMine == 2 && cost == 1140) {
+            return;
+        }
+
+        g.setColor(new Color(5, 28, 61, 246));
+        g.fillRoundRect(x + 25, y + 32, w - 82, 50, 14, 14);
+        drawGoldLabel(g, "Open Mine " + nextMine, x + 38, y + 68, w - 108, 31, 19);
+
+        int priceX = x + 132;
+        int priceY = y + 152;
+        g.setColor(new Color(18, 82, 153, 246));
+        g.fillRoundRect(priceX, priceY, 162, 43, 12, 12);
+        drawGem(g, priceX + 13, priceY + 10, 23, new Color(96, 238, 255));
+        drawGoldLabel(g, String.valueOf(cost), priceX + 49, priceY + 31, 78, 28, 18);
+        g.setFont(new Font("Serif", Font.BOLD, 17));
+        g.setColor(new Color(222, 243, 255));
+        g.drawString("gems", priceX + 125, priceY + 31);
     }
 
     private void drawAddMineContextPanel(Graphics2D g, int x, int y, int w, int h) {
@@ -3080,7 +3127,7 @@ public class GamePanel extends JPanel {
         closePopup.setBounds(-100, -100, 1, 1);
 
         if (selection == Selection.ADD_MINE) {
-            optionOne.setBounds(BUY_MINE_PANEL_X + 34, BUY_MINE_PANEL_Y + 132, BUY_MINE_PANEL_W - 68, 126);
+            optionOne.setBounds(BUY_MINE_PANEL_X + 22, BUY_MINE_PANEL_Y + 88, BUY_MINE_PANEL_W - 44, 128);
         }
     }
 
@@ -3090,7 +3137,9 @@ public class GamePanel extends JPanel {
     }
 
     private double getMaxScrollY() {
-        int newMineCardBottom = FIRST_MINE_FLOOR_Y + (mines.size() - 1) * MINE_ROW_GAP + 48 + NEW_MINE_CARD_H;
+        int nextMine = mines.size() + 1;
+        int newMineCardBottom = FIRST_MINE_FLOOR_Y + (mines.size() - 1) * MINE_ROW_GAP + 48
+                + getNewMineCardHeight(nextMine, getNewMineCost());
         return Math.max(0, newMineCardBottom - MINE_VIEW_BOTTOM + 10);
     }
 
@@ -3212,6 +3261,25 @@ public class GamePanel extends JPanel {
     private void drawCentered(Graphics2D g, String text, int centerX, int baselineY) {
         FontMetrics metrics = g.getFontMetrics();
         g.drawString(text, centerX - metrics.stringWidth(text) / 2, baselineY);
+    }
+
+    private void drawGoldLabel(Graphics2D g, String text, int x, int baselineY, int maxWidth, int maxSize, int minSize) {
+        int size = maxSize;
+        Font font = new Font("Serif", Font.BOLD, size);
+        while (size > minSize) {
+            g.setFont(font);
+            if (g.getFontMetrics().stringWidth(text) <= maxWidth) {
+                break;
+            }
+            size--;
+            font = new Font("Serif", Font.BOLD, size);
+        }
+
+        g.setFont(font);
+        g.setColor(new Color(39, 18, 8, 170));
+        g.drawString(text, x + 2, baselineY + 2);
+        g.setColor(new Color(255, 238, 188));
+        g.drawString(text, x, baselineY);
     }
 
     private enum Selection {

@@ -168,15 +168,6 @@ public class Courier {
         int x = getCurrentX();
         int y = getCurrentY();
 
-        if (selected) {
-            g.setColor(new Color(255, 225, 105, 140));
-            if (hasRunnerCartArt()) {
-                g.fillRoundRect(x - 45, y - 55, 110, 92, 22, 22);
-            } else {
-                g.fillOval(x - 12, y - 15, strongCarrier ? 70 : 58, 62);
-            }
-        }
-
         g.setColor(new Color(0, 0, 0, 80));
         if (hasRunnerCartArt()) {
             g.fillOval(x - 40, y + 27, 105, 14);
