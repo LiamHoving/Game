@@ -10,6 +10,11 @@ public class Courier {
     private static final int MAX_STAT_LEVEL = 30;
     private static final Image LIFT_BIRD_SPRITE = loadSprite("assets/yellow_bird_new.png");
     private static final Image RUNNER_BIRD_SPRITE = loadSprite("assets/purple_bird_new.png");
+    private static final Image RUNNER_CART_EMPTY_SPRITE = loadSprite("assets/nest_runner_empty.png");
+    private static final Image RUNNER_CART_SMALL_SPRITE = loadSprite("assets/nest_runner_small.png");
+    private static final Image RUNNER_CART_FEW_SPRITE = loadSprite("assets/nest_runner_few.png");
+    private static final Image RUNNER_CART_MANY_SPRITE = loadSprite("assets/nest_runner_many.png");
+    private static final Image RUNNER_CART_FULL_SPRITE = loadSprite("assets/nest_runner_full.png");
 
     private final String name;
     private final Color color;
@@ -34,6 +39,7 @@ public class Courier {
     private boolean facingRight = true;
     private int pendingLoad;
     private int load;
+    private double animationTime;
 
     public Courier(
             String name,
@@ -82,6 +88,7 @@ public class Courier {
     }
 
     public int update(double deltaSeconds) {
+        animationTime += deltaSeconds;
         if (!busy) {
             return 0;
         }
@@ -163,11 +170,19 @@ public class Courier {
 
         if (selected) {
             g.setColor(new Color(255, 225, 105, 140));
-            g.fillOval(x - 12, y - 15, strongCarrier ? 70 : 58, 62);
+            if (hasRunnerCartArt()) {
+                g.fillRoundRect(x - 45, y - 55, 110, 92, 22, 22);
+            } else {
+                g.fillOval(x - 12, y - 15, strongCarrier ? 70 : 58, 62);
+            }
         }
 
         g.setColor(new Color(0, 0, 0, 80));
-        g.fillOval(x - 18, y + 26, strongCarrier ? 55 : 42, 10);
+        if (hasRunnerCartArt()) {
+            g.fillOval(x - 40, y + 27, 105, 14);
+        } else {
+            g.fillOval(x - 18, y + 26, strongCarrier ? 55 : 42, 10);
+        }
 
         if (strongCarrier) {
             drawStrongLiftBird(g, x, y);
@@ -175,7 +190,7 @@ public class Courier {
             drawRunnerBird(g, x, y, facingRight);
         }
 
-        if (load > 0) {
+        if (load > 0 && (strongCarrier || !hasRunnerCartArt())) {
             drawGemLoad(g, x, y);
         }
 
@@ -185,6 +200,12 @@ public class Courier {
     public boolean contains(int mouseX, int mouseY) {
         int x = getCurrentX();
         int y = getCurrentY();
+        if (hasRunnerCartArt()) {
+            return mouseX >= x - 45
+                    && mouseX <= x + 65
+                    && mouseY >= y - 55
+                    && mouseY <= y + 40;
+        }
         return mouseX >= x - 20
                 && mouseX <= x + (strongCarrier ? 62 : 48)
                 && mouseY >= y - 20
@@ -256,6 +277,12 @@ public class Courier {
     }
 
     private void drawRunnerBird(Graphics2D g, int x, int y, boolean facingRight) {
+        Image cartSprite = getRunnerCartSprite();
+        if (cartSprite != null) {
+            drawRunnerCart(g, cartSprite, x, y, facingRight);
+            return;
+        }
+
         if (RUNNER_BIRD_SPRITE != null) {
             int spriteW = 54;
             int spriteH = 61;
@@ -300,6 +327,47 @@ public class Courier {
         g.drawLine(x + 25, y + 34, x + 30, y + 45);
     }
 
+    private void drawRunnerCart(Graphics2D g, Image sprite, int x, int y, boolean facingRight) {
+        int spriteW = 104;
+        int spriteH = 90;
+        int spriteX = x - 40;
+        int spriteY = y - 52 + (int) (Math.sin(animationTime * 8.0) * 1.2);
+
+        if (facingRight) {
+            g.drawImage(sprite, spriteX + spriteW, spriteY, -spriteW, spriteH, null);
+        } else {
+            g.drawImage(sprite, spriteX, spriteY, spriteW, spriteH, null);
+        }
+
+    }
+
+    private Image getRunnerCartSprite() {
+        if (strongCarrier || RUNNER_CART_EMPTY_SPRITE == null) {
+            return null;
+        }
+
+        int carried = Math.max(load, pickingUp ? pendingLoad : 0);
+        if (carried <= 0) {
+            return RUNNER_CART_EMPTY_SPRITE;
+        }
+
+        int capacity = Math.max(1, getCapacity());
+        if (carried <= Math.max(2, capacity / 6)) {
+            return RUNNER_CART_SMALL_SPRITE != null ? RUNNER_CART_SMALL_SPRITE : RUNNER_CART_EMPTY_SPRITE;
+        }
+        if (carried <= Math.max(5, capacity / 3)) {
+            return RUNNER_CART_FEW_SPRITE != null ? RUNNER_CART_FEW_SPRITE : RUNNER_CART_EMPTY_SPRITE;
+        }
+        if (carried < capacity) {
+            return RUNNER_CART_MANY_SPRITE != null ? RUNNER_CART_MANY_SPRITE : RUNNER_CART_EMPTY_SPRITE;
+        }
+        return RUNNER_CART_FULL_SPRITE != null ? RUNNER_CART_FULL_SPRITE : RUNNER_CART_EMPTY_SPRITE;
+    }
+
+    private boolean hasRunnerCartArt() {
+        return !strongCarrier && RUNNER_CART_EMPTY_SPRITE != null;
+    }
+
     private void drawGemLoad(Graphics2D g, int x, int y) {
         if (strongCarrier) {
             g.setColor(new Color(75, 48, 34));
@@ -337,8 +405,8 @@ public class Courier {
         }
 
         int bubbleWidth = 78;
-        int bubbleX = x - 22;
-        int bubbleY = y - 28;
+        int bubbleX = hasRunnerCartArt() ? x - 26 : x - 22;
+        int bubbleY = hasRunnerCartArt() ? y - 70 : y - 28;
 
         g.setColor(new Color(9, 17, 20, 215));
         g.fillRoundRect(bubbleX, bubbleY, bubbleWidth, 22, 11, 11);
